@@ -1,17 +1,8 @@
-# Documentation and local notes
-*.md
-docs/
-!README.md
-!PROJECT_OVERVIEW.md
-!docs/
-!docs/README.md
-!docs/*.md
-
 # Environment and secrets
 .env
 .env.*
 !.env.example
-!.env.*.example
+!**/.env.example
 
 # Python
 __pycache__/
@@ -26,6 +17,7 @@ pip-wheel-metadata/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.tox/
 coverage.xml
 .coverage
 htmlcov/
@@ -54,11 +46,15 @@ logs/
 *.avro
 *.orc
 
-# IDE and operating-system files
+# Docker local overrides
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Editors and operating system files
 .idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
+.vscode/
 *.swp
+*.swo
 .DS_Store
 Thumbs.db
+desktop.ini
