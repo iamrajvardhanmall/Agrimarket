@@ -1,3 +1,7 @@
+# Documentation
+*.md
+docs/
+
 # Environment and secrets
 .env
 .env.*
