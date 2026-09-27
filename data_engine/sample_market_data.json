@@ -1,0 +1,6 @@
+[
+  {"market": "Nashik APMC", "commodity": "Tomato", "modal_price": 2850, "arrival_quantity": 4210, "timestamp": "2026-09-18T10:30:00+05:30"},
+  {"market": "Lasalgaon Market", "commodity": "Tomato", "modal_price": 2920, "arrival_quantity": 3650, "timestamp": "2026-09-18T10:30:00+05:30"},
+  {"market": "Pimpalgaon Baswant", "commodity": "Tomato", "modal_price": 2760, "arrival_quantity": 2980, "timestamp": "2026-09-18T10:30:00+05:30"},
+  {"market": "Nashik APMC", "commodity": "Onion", "modal_price": 2180, "arrival_quantity": 5820, "timestamp": "2026-09-18T10:30:00+05:30"}
+]

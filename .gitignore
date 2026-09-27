@@ -1,0 +1,64 @@
+# Documentation and local notes
+*.md
+docs/
+!README.md
+!PROJECT_OVERVIEW.md
+!docs/
+!docs/README.md
+!docs/*.md
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+.coverage
+htmlcov/
+
+# Django and local databases
+*.sqlite3
+*.sqlite3-journal
+media/
+staticfiles/
+
+# Node and frontend build output
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Spark and data-engineering output
+spark-warehouse/
+metastore_db/
+checkpoints/
+logs/
+*.parquet
+*.avro
+*.orc
+
+# IDE and operating-system files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+{
+  "name": "agrimarket-ai-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {"dev": "vite", "build": "vite build", "preview": "vite preview"},
+  "dependencies": {"@vitejs/plugin-react": "latest", "vite": "latest", "react": "latest", "react-dom": "latest", "plotly.js-basic-dist-min": "^3.0.1"},
+  "devDependencies": {"autoprefixer": "^10.4.20", "postcss": "^8.4.47", "tailwindcss": "^3.4.14"}
+}
