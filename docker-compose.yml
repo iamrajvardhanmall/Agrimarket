@@ -1,14 +1,13 @@
 services:
-  postgres:
-    image: postgres:16
+  mongodb:
+    image: mongo:8
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-agrimarket}
-      POSTGRES_USER: ${POSTGRES_USER:-agrimarket}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-replace-me}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-agrimarket}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-#07072005Raj}
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongodb_data:/data/db
 
   kafka:
     image: apache/kafka:3.8.0
@@ -24,4 +23,4 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
 volumes:
-  postgres_data:
+  mongodb_data:

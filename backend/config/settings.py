@@ -36,14 +36,13 @@ TEMPLATES = [{
 }]
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Domain data is stored in MongoDB through market_api.db. Django's built-in
+# Relational apps are not used by this API, so no external SQL connection is
+# configured here.
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "agrimarket"),
-        "USER": os.getenv("POSTGRES_USER", "agrimarket"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "agrimarket-dev"),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "django-framework.sqlite3",
     }
 }
 

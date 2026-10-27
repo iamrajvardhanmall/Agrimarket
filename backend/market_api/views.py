@@ -1,8 +1,11 @@
 from datetime import date
+from uuid import uuid4
 
+from pymongo.errors import PyMongoError
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from .db import check_connection, insert_document
 from .serializers import BuyerRequirementSerializer, GrievanceSerializer, LotSerializer, MarketPriceSerializer, OfferSerializer
 from .services import calculate_recommendation
 
@@ -17,7 +20,11 @@ MARKETS = [
 
 @api_view(["GET"])
 def health(request):
-    return Response({"status": "ok", "service": "agrimarket-api"})
+    try:
+        check_connection()
+    except PyMongoError:
+        return Response({"status": "error", "service": "agrimarket-api", "database": "unavailable"}, status=503)
+    return Response({"status": "ok", "service": "agrimarket-api", "database": "mongodb"})
 
 
 @api_view(["GET"])
@@ -60,9 +67,15 @@ def lots(request):
         }
         serializer = LotSerializer(data=lot_data)
         serializer.is_valid(raise_exception=True)
-        lot = serializer.validated_data
-        lot.update({"id": "AGRI-10427", "created_at": str(date.today())})
-        return Response(lot, status=201)
+        lot = {
+            **serializer.validated_data,
+            "id": f"AGRI-{uuid4().hex[:8].upper()}",
+            "created_at": str(date.today()),
+        }
+        try:
+            return Response(insert_document("lots", lot), status=201)
+        except PyMongoError:
+            return Response({"error": "MongoDB is unavailable."}, status=503)
     return Response({"lots": [{"id": "AGRI-10245", "commodity": "Tomato", "quantity_kg": 5000, "quality": "Grade A", "asking_price": 2800, "offers": 3, "status": "OPEN"}]})
 
 
@@ -72,7 +85,10 @@ def buyers(request):
     if request.method == "POST":
         serializer = BuyerRequirementSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=201)
+        try:
+            return Response(insert_document("buyer_requirements", serializer.validated_data), status=201)
+        except PyMongoError:
+            return Response({"error": "MongoDB is unavailable."}, status=503)
     return Response({"buyers": buyers_payload})
 
 
@@ -82,7 +98,10 @@ def offers(request):
     if request.method == "POST":
         serializer = OfferSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=201)
+        try:
+            return Response(insert_document("offers", serializer.validated_data), status=201)
+        except PyMongoError:
+            return Response({"error": "MongoDB is unavailable."}, status=503)
     return Response({"offers": payload})
 
 
@@ -91,5 +110,9 @@ def grievances(request):
     if request.method == "POST":
         serializer = GrievanceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=201)
+        grievance = {**serializer.validated_data, "created_at": str(date.today())}
+        try:
+            return Response(insert_document("grievances", grievance), status=201)
+        except PyMongoError:
+            return Response({"error": "MongoDB is unavailable."}, status=503)
     return Response({"grievances": [{"id": 1, "title": "Payment delay", "category": "Finance", "status": "OPEN"}]})
