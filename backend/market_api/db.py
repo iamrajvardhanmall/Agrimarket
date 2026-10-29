@@ -9,7 +9,7 @@ from pymongo import MongoClient
 
 
 _client: MongoClient | None = None
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
 
 
 def get_database():
@@ -29,7 +29,12 @@ def get_database():
 
 
 def check_connection() -> None:
-    get_database().command("ping")
+    global _client
+    try:
+        get_database().command("ping")
+    except Exception:
+        _client = None
+        raise
 
 
 def insert_document(collection: str, document: dict) -> dict:
