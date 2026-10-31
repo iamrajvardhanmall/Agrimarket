@@ -50,3 +50,11 @@ class GrievanceSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
     category = serializers.CharField(max_length=60)
     status = serializers.CharField(max_length=30, default="OPEN")
+
+
+class TransactionSerializer(serializers.Serializer):
+    lot = serializers.CharField(max_length=120)
+    buyer_name = serializers.CharField(max_length=160)
+    amount = serializers.FloatField(min_value=0)
+    delivery_status = serializers.ChoiceField(choices=["PLANNED", "IN_TRANSIT", "DELIVERED"], default="PLANNED")
+    payment_status = serializers.ChoiceField(choices=["PENDING", "PARTIAL", "PAID"], default="PENDING")

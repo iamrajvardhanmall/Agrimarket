@@ -1,0 +1,218 @@
+from __future__ import annotations
+
+import json
+import csv
+import logging
+import os
+import time
+from datetime import date
+from pathlib import Path
+from urllib.error import HTTPError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+from dotenv import load_dotenv
+
+
+LOGGER = logging.getLogger(__name__)
+DATA_GOV_RESOURCE = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070"
+load_dotenv()
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+
+FALLBACK_MARKETS = [
+    {"id": "nashik", "name": "Nashik APMC", "district": "Nashik", "price": 2850, "trend": 6.8, "arrival": 4210, "distance": 18, "demand": "High", "confidence": 82},
+    {"id": "lasalgaon", "name": "Lasalgaon Market", "district": "Nashik", "price": 2920, "trend": 4.2, "arrival": 3650, "distance": 34, "demand": "High", "confidence": 78},
+    {"id": "pimpalgaon", "name": "Pimpalgaon Baswant", "district": "Nashik", "price": 2760, "trend": 8.9, "arrival": 2980, "distance": 42, "demand": "Medium", "confidence": 74},
+    {"id": "manmad", "name": "Manmad Yard", "district": "Nashik", "price": 2680, "trend": 2.1, "arrival": 5120, "distance": 61, "demand": "Medium", "confidence": 69},
+]
+
+KNOWN_DISTANCES = {
+    "Nashik APMC": 18,
+    "Nashik": 18,
+    "Lasalgaon": 34,
+    "Pimpalgaon Baswant": 42,
+    "Manmad": 61,
+}
+COMMODITY_GROUPS = {
+    "Cereals": {"Bajra(Pearl Millet/Cumbu)", "Barley (Jau)", "Paddy(Common)", "Wheat"},
+    "Fibre Crops": {"Cotton", "Jute"},
+    "Oil Seeds": {"Groundnut", "Mustard", "Soyabean"},
+    "Pulses": {"Bengal Gram(Gram)(Whole)", "Black Gram(Urd Beans)(Whole)", "Arhar (Tur/Red Gram)(Whole)"},
+}
+DATASET_PATH = Path(__file__).resolve().parents[2] / "data_engine" / "Dataset.csv"
+
+
+def fallback_market_data(commodity: str | None) -> list[dict]:
+    return [{**market, "commodity": commodity or "All commodities"} for market in FALLBACK_MARKETS]
+
+
+def load_locations() -> dict[str, list[str]]:
+    """Return every state and district available in the synchronized dataset."""
+    locations: dict[str, set[str]] = {}
+    try:
+        with DATASET_PATH.open(encoding="utf-8-sig", newline="") as source:
+            for row in csv.DictReader(source):
+                state = (row.get("State") or "").strip()
+                district = (row.get("District") or "").strip()
+                if state and district:
+                    locations.setdefault(state, set()).add(district)
+    except OSError as exc:
+        LOGGER.warning("Could not read dataset locations: %s", exc)
+    return {state: sorted(districts) for state, districts in sorted(locations.items())}
+
+
+class MarketDataError(RuntimeError):
+    """Raised when an external market-data response cannot be consumed."""
+
+
+def _number(record: dict, field: str, default: float = 0) -> float:
+    value = record.get(field, default)
+    if value in (None, ""):
+        return default
+    try:
+        return float(str(value).replace(",", ""))
+    except (TypeError, ValueError) as exc:
+        raise MarketDataError(f"Invalid {field} value in market-data response.") from exc
+
+
+def normalize_market(record: dict, index: int) -> dict:
+    name = str(record.get("market") or record.get("market_name") or "Unknown market").strip()
+    district = str(record.get("district") or "Unknown").strip()
+    commodity = str(record.get("commodity") or "Unknown").strip()
+    state = str(record.get("state") or "Unknown").strip()
+    variety = str(record.get("variety") or "Unknown").strip()
+    modal_price = _number(record, "modal_price")
+    if modal_price <= 0:
+        raise MarketDataError("Market-data response contains a non-positive modal price.")
+
+    distance = KNOWN_DISTANCES.get(name, 50)
+    return {
+        "id": f"market-{index + 1}",
+        "name": name,
+        "market": name,
+        "district": district,
+        "state": state,
+        "commodity": commodity,
+        "commodity_group": next((group for group, values in COMMODITY_GROUPS.items() if commodity in values), "Other"),
+        "variety": variety,
+        "price": modal_price,
+        "modal_price": modal_price,
+        "min_price": _number(record, "min_price"),
+        "max_price": _number(record, "max_price"),
+        "trend": 0,
+        "arrival": _number(record, "arrival_quantity"),
+        "arrival_quantity": _number(record, "arrival_quantity"),
+        "distance": distance,
+        "demand": "Medium",
+        "confidence": 70,
+        "observed_on": record.get("arrival_date") or str(date.today()),
+    }
+
+
+def fetch_market_data(
+    commodity: str | None = None,
+    district: str | None = None,
+    state: str | None = None,
+    market: str | None = None,
+    commodity_group: str | None = None,
+    variety: str | None = None,
+) -> list[dict]:
+    api_key = os.getenv("MARKET_DATA_API_KEY")
+    if not api_key:
+        LOGGER.warning("MARKET_DATA_API_KEY is not configured; using bundled market data.")
+        return fallback_market_data(commodity)
+
+    params = {
+        "api-key": api_key,
+        "format": "json",
+        "limit": "1000",
+    }
+    for key, value in (("state", state), ("district", district), ("market", market), ("commodity", commodity), ("variety", variety)):
+        if value and not value.lower().startswith("all "):
+            params[key] = value
+    request = Request(f"{DATA_GOV_RESOURCE}?{urlencode(params)}", headers={"Accept": "application/json"})
+    try:
+        with urlopen(request, timeout=5) as response:
+            payload = json.load(response)
+        records = payload.get("records", [])
+        normalized = [normalize_market(record, index) for index, record in enumerate(records)]
+        if commodity_group and not commodity_group.lower().startswith("all "):
+            normalized = [market_data for market_data in normalized if market_data["commodity_group"] == commodity_group]
+        if not normalized:
+            raise MarketDataError("Market-data API returned no records.")
+        return normalized
+    except (OSError, ValueError, TypeError, json.JSONDecodeError, MarketDataError) as exc:
+        LOGGER.warning("Market-data API unavailable: %s; using bundled market data.", exc)
+        return fallback_market_data(commodity)
+
+
+def fetch_market_records(
+    *,
+    commodity: str | None = None,
+    district: str | None = None,
+    state: str | None = None,
+    limit: int = 1000,
+) -> list[dict]:
+    """Fetch raw data.gov.in records for batch export."""
+    api_key = os.getenv("MARKET_DATA_API_KEY")
+    if not api_key:
+        raise MarketDataError("MARKET_DATA_API_KEY is required for a live CSV export.")
+    if limit < 1:
+        raise ValueError("limit must be greater than zero")
+
+    records: list[dict] = []
+    offset = 0
+    while True:
+        params = {
+            "api-key": api_key,
+            "format": "json",
+            "limit": str(limit),
+            "offset": str(offset),
+        }
+        if commodity:
+            params["commodity"] = commodity
+        if district:
+            params["district"] = district
+        if state:
+            params["state"] = state
+        request = Request(
+            f"{DATA_GOV_RESOURCE}?{urlencode(params)}",
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "AgriMarket/1.0",
+            },
+        )
+        last_error: Exception | None = None
+        page_limit = limit
+        for attempt in range(5):
+            try:
+                with urlopen(request, timeout=120) as response:
+                    payload = json.load(response)
+                break
+            except (HTTPError, OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+                last_error = exc
+                if attempt < 4:
+                    time.sleep(min(30, 2**attempt))
+                    if isinstance(exc, HTTPError) and exc.code in (429, 502, 503, 504):
+                        page_limit = max(100, page_limit // 2)
+                        params["limit"] = str(page_limit)
+                        request = Request(
+                            f"{DATA_GOV_RESOURCE}?{urlencode(params)}",
+                            headers={
+                                "Accept": "application/json",
+                                "User-Agent": "AgriMarket/1.0",
+                            },
+                        )
+        else:
+            raise MarketDataError(
+                f"Could not read the data.gov.in response after 5 attempts: {last_error}"
+            ) from last_error
+
+        page = payload.get("records", [])
+        if not isinstance(page, list):
+            raise MarketDataError("The data.gov.in response has an invalid records field.")
+        records.extend(page)
+        if len(page) < page_limit:
+            return records
+        offset += len(page)

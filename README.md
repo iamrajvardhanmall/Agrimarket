@@ -1,6 +1,6 @@
 # AgriMarket AI
 
-AgriMarket AI is an agricultural market-intelligence platform that helps farmers and FPOs choose the best selling option using market prices, demand, distance, transport cost, storage cost, and buyer matches. The repository currently provides a runnable vertical slice with demo-data fallback, a Django API, a React dashboard, a recommendation service, and a buyer-market graph view.
+AgriMarket AI is an agricultural market-intelligence platform that helps farmers and FPOs choose the best selling option using market prices, demand, distance, transport cost, storage cost, and buyer matches. The repository currently provides a runnable public MVP with demo-data fallback, a Django API, a React dashboard, ML insights, and marketplace workflows.
 
 ## Documentation
 
@@ -8,12 +8,12 @@ The complete documentation is organized in [docs/README.md](docs/README.md). It 
 
 - Product requirements and user roles
 - System architecture and technology boundaries
-- Local setup and PostgreSQL troubleshooting
-- React frontend and Plotly.js dashboard
+- Local setup and MongoDB troubleshooting
+- React frontend dashboard
 - Django REST API and domain models
-- PostgreSQL data design and security
+- MongoDB data design and security
 - PySpark data engineering
-- Kafka and Spark Streaming
+- Batch data processing
 - Machine learning and evaluation
 - Market visualization with Matplotlib and Seaborn
 - User workflows, roadmap, and known limitations
@@ -22,13 +22,11 @@ The complete documentation is organized in [docs/README.md](docs/README.md). It 
 
 The repository now includes a runnable first vertical slice:
 
-- `frontend/`: React dashboard using Tailwind CSS and Plotly.js.
-- `backend/`: Django REST Framework API backed by PostgreSQL.
+- `frontend/`: React dashboard using Tailwind CSS and native SVG visualization.
+- `backend/`: Django REST Framework API backed by MongoDB.
 - `data_engine/`: PySpark SQL and RDD-ready processing boundaries.
-- `ml/`: PySpark ML/MLlib and scikit-learn experimentation boundary.
-- `streaming/`: Kafka producer and Spark Structured Streaming boundary.
-- `graph/`: NetworkX market-buyer analysis boundary, with GraphX identified as the distributed scale-up path.
-- `docker-compose.yml`: MongoDB and Apache Kafka development services.
+- `ml/`: scikit-learn experimentation boundary.
+- `docker-compose.yml`: MongoDB development service.
 
 ## Run locally
 
@@ -52,8 +50,9 @@ python manage.py runserver
 ```
 
 Run the final command from `backend/`, or use `cd backend` before it.
+The Django command is `runserver` (not `runser`).
 
-Start MongoDB and Kafka first with `docker compose up -d` from the repository root. Alternatively, configure an existing local MongoDB instance:
+Start MongoDB with `docker compose up -d` from the repository root. The API stores domain data in the `agrimarket` MongoDB database. Market prices are loaded from the data.gov.in mandi API when `MARKET_DATA_API_KEY` is configured, and bundled sample data is used when the API is unavailable. Alternatively, configure an existing local MongoDB instance:
 
 ```powershell
 $env:MONGO_DB = "agrimarket"
@@ -61,6 +60,7 @@ $env:MONGO_USER = "agrimarket"
 $env:MONGO_PASSWORD = "your-local-password"
 $env:MONGO_HOST = "localhost"
 $env:MONGO_PORT = "27017"
+$env:MARKET_DATA_API_KEY = "your-data-gov-in-api-key"
 python manage.py runserver
 ```
 
@@ -68,11 +68,23 @@ python manage.py runserver
 
 The API is available at `http://localhost:8000/api/`. Useful endpoints are `/health/`, `/markets/`, `/recommendations/`, `/lots/`, `/buyers/`, and `/offers/`.
 
-### Data and forecasting utilities
+ML evaluation is available at `/api/ml/insights/` and is shown in the dashboard's Machine learning panel. Run `python ml/train_models.py` to train the local models and generate a correlation heatmap.
+
+### Daily mandi CSV export
+
+Set your data.gov.in API key locally, then run the exporter from the repository root:
 
 ```powershell
-python -m streaming.producers.replay_market_data
+$env:MARKET_DATA_API_KEY = "your-data-gov-in-api-key"
+python data_engine/fetch_daily_market_data.py
 ```
+
+Optional filters are available with `--state`, `--district`, and `--commodity`.
+The default target is `data_engine/Dataset.csv`; each run merges only new
+records, keyed by state, district, market, commodity, variety, grade, and
+arrival date, so running it again is safe and duplicate records are removed.
+Schedule this command once per day using Windows Task Scheduler, cron, or CI.
+To use another file, pass `--output`.
 
 See [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) for the complete product requirements, architecture, proposed data sources, workflows, and future modules.
 
@@ -87,8 +99,13 @@ npm run build
 
 ## Product direction
 
-The MVP intentionally focuses on one complete farmer workflow:
+The MVP supports a public/no-login farmer and marketplace workflow:
 
-`Farmer inputs lot -> system compares markets -> recommendation ranks net realization -> farmer explores matched buyers`
+`Farmer inputs lot -> system compares markets -> recommendation ranks net realization -> farmer explores matches -> buyer offers -> delivery/payment tracking`
 
-Authentication, production ML training, live Kafka publishing, payments, and deployment infrastructure remain the next implementation layers. The current lot, buyer, and offer endpoints still use demo responses while serializers and migrations establish the persistence boundary.
+Farmers can filter market data by state, district, market, commodity group,
+commodity, and variety. The decision engine then ranks the filtered markets by
+expected net realization after configurable transport and storage costs, so the
+recommended route is based on estimated profit rather than price alone.
+
+Login/signup, payment processing, production ML training, and deployment infrastructure remain outside the current MVP. Domain records are persisted in MongoDB, with fallback demo data available when the database is unavailable.

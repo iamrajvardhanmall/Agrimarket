@@ -44,6 +44,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Spark and data-engineering output
+data/market_prices.csv
 spark-warehouse/
 metastore_db/
 checkpoints/
@@ -51,6 +52,7 @@ logs/
 *.parquet
 *.avro
 *.orc
+ml/correlation_heatmap.png
 
 # Docker local overrides
 docker-compose.override.yml

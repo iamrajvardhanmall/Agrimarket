@@ -40,3 +40,18 @@ def check_connection() -> None:
 def insert_document(collection: str, document: dict) -> dict:
     result = get_database()[collection].insert_one(document)
     return {**document, "id": str(result.inserted_id)}
+
+
+def list_documents(collection: str, limit: int = 100) -> list[dict]:
+    documents = get_database()[collection].find({}, {"_id": 0}).sort("created_at", -1).limit(limit)
+    return list(documents)
+
+
+def update_document(collection: str, document_id: str, updates: dict) -> bool:
+    from bson import ObjectId
+
+    result = get_database()[collection].update_one(
+        {"_id": ObjectId(document_id)},
+        {"$set": updates},
+    )
+    return result.modified_count > 0

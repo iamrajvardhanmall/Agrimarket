@@ -608,14 +608,13 @@ The system is designed to scale beyond a small CSV dataset.
                DATA INGESTION
                       │
                       ▼
-                    KAFKA
+             BATCH PROCESSING
+                      │
+                    SPARK
                       │
              ┌────────┴────────┐
              ▼                 ▼
-       Batch Processing   Stream Processing
-             │                 │
-             ▼                 ▼
-           SPARK        SPARK STREAMING
+          Spark SQL       Data analysis
              │                 │
              └────────┬────────┘
                       ▼
@@ -641,20 +640,16 @@ The system is designed to scale beyond a small CSV dataset.
 
 ---
 
-# 🔄 Kafka & Real-Time Processing
+# 🔄 Market data ingestion
 
 No physical IoT device is required.
 
-Market data can be obtained from available datasets/APIs and converted into streaming events.
+Market data is obtained from datasets and APIs, then processed through the daily CSV ingestion job.
 
 ```text
 Market Dataset / API
          ↓
-  Python Kafka Producer
-         ↓
-     Kafka Topic
-         ↓
-  Spark Streaming
+  Daily CSV ingestion
          ↓
    Data Processing
          ↓
@@ -665,7 +660,7 @@ Market Dataset / API
  React Dashboard
 ```
 
-Example Kafka event:
+Example market record:
 
 ```json
 {
@@ -677,7 +672,7 @@ Example Kafka event:
 }
 ```
 
-The system can replay historical records as a simulated stream for demonstration purposes.
+Historical records can be replayed as newline-delimited JSON for demonstrations.
 
 ---
 
@@ -777,8 +772,6 @@ Responsibilities:
 
 Responsibilities:
 
-* Authentication
-* Authorization
 * User management
 * Farmer/FPO management
 * Buyer management
@@ -872,12 +865,6 @@ agrimarket-ai/
 │   ├── evaluation/
 │   └── models/
 │
-├── streaming/
-│   ├── producers/
-│   ├── consumers/
-│   ├── kafka/
-│   └── spark_streaming/
-│
 ├── graph/
 │   └── visualization/
 │
@@ -908,11 +895,6 @@ agrimarket-ai/
 
 Security is a core part of the platform.
 
-### Authentication
-
-* JWT authentication
-* Role-based access control
-
 ### Roles
 
 ```text
@@ -924,13 +906,10 @@ ADMIN
 
 ### Security controls
 
-* Password hashing
-* API authorization
 * Input validation
 * Rate limiting
 * Audit logging
 * Secure file upload
-* Transaction authorization
 * Sensitive-data protection
 
 ---
@@ -965,7 +944,7 @@ Language support should be implemented based on the target deployment requiremen
 # 📊 Example Farmer Workflow
 
 ```text
-1. Farmer Login
+1. Open the farmer dashboard
        ↓
 2. Select Crop
        ↓
@@ -1232,8 +1211,7 @@ This is particularly important for farmer-facing AI.
 * React.js
 * Tailwind CSS
 * JavaScript
-* Plotly
-* Map-based visualization
+* Native SVG visualization
 
 ## Backend
 
@@ -1247,16 +1225,15 @@ This is particularly important for farmer-facing AI.
 * PySpark
 * Spark SQL
 * RDD
-* Spark Streaming
+* Daily batch processing
 
-## Streaming
+## Data ingestion
 
-* Apache Kafka
+* data.gov.in API ingestion
+* Daily CSV batch export
 
 ## Machine Learning
 
-* Spark MLlib
-* PySpark ML
 * Scikit-learn for experimentation/comparison where appropriate
 
 ## Database
@@ -1292,12 +1269,9 @@ This is particularly important for farmer-facing AI.
                                     │
                      ┌──────────────┼──────────────┐
                      ▼              ▼              ▼
-                PostgreSQL        Kafka          ML Service
-                                    │              │
-                                    ▼              │
-                             Spark Streaming       │
-                                    │              │
-                                    └──────┬───────┘
+                MongoDB          ML Service
+                                    │
+                                    ▼
                                            ▼
                                      Spark Cluster
 ```
@@ -1311,16 +1285,14 @@ Potential containers:
 ```text
 frontend
 backend
-postgres
-kafka
-zookeeper / kafka controller
+mongodb
 spark-master
 spark-worker
 ml-service
 nginx
 ```
 
-The exact Kafka deployment topology can be chosen based on the development environment.
+The development environment uses MongoDB, with data.gov.in ingestion handled by the API and daily CSV job.
 
 ---
 
@@ -1386,23 +1358,20 @@ Move large-scale processing to:
 PySpark
 Spark SQL
 RDD
-Spark MLlib
 ```
 
 ---
 
-## Phase 6 — Kafka
+## Phase 6 — Data ingestion
 
 Implement:
 
 ```text
-Producer
+Data.gov.in API
    ↓
-Kafka Topic
+Daily CSV export
    ↓
-Consumer
-   ↓
-Spark Streaming
+Spark batch processing
 ```
 
 Use historical market records as simulated real-time events.
@@ -1413,7 +1382,6 @@ Use historical market records as simulated real-time events.
 
 Develop:
 
-* Authentication
 * Farmer APIs
 * Buyer APIs
 * Market APIs
@@ -1449,8 +1417,6 @@ Django
   ↓
 ML + Spark
   ↓
-Kafka
-  ↓
 Database
 ```
 
@@ -1462,7 +1428,6 @@ Database
 
 * Unit tests
 * API tests
-* Authentication tests
 
 ### ML
 
@@ -1473,13 +1438,11 @@ Database
 ### System
 
 * Load testing
-* Streaming tests
+* Data-ingestion tests
 * Failure handling
 
 ### Security
 
-* Authentication
-* Authorization
 * Input validation
 * API security
 
@@ -1571,7 +1534,7 @@ This project combines your major technical areas:
    DATA SCIENCE      ML          FULL STACK
         │             │             │
       Pandas       PySpark        React
-      NumPy        MLlib          Django
+      NumPy        Models         Django
       EDA          Models         REST API
         │             │             │
         └─────────────┼─────────────┘
@@ -1580,7 +1543,7 @@ This project combines your major technical areas:
                       │
              ┌────────┼────────┐
              ▼        ▼        ▼
-           Spark    Kafka    Matplotlib
+           Spark    MongoDB    Matplotlib
 ```
 
 It therefore demonstrates:
@@ -1672,7 +1635,7 @@ AgriMarket AI aims to transform fragmented agricultural market information into 
 
 **🚧 MVP vertical slice in development**
 
-The repository now contains a runnable React dashboard, Django REST API, PostgreSQL domain models with an initial migration, recommendation service tests, a NetworkX graph-analysis module, and an SVG buyer-market graph in the frontend. Demo market, buyer, lot, and offer payloads remain in use in several API views.
+The repository now contains a runnable React dashboard, Django REST API, MongoDB persistence helpers, recommendation service tests, ML insights, and marketplace workflows. Demo market, buyer, lot, and offer payloads remain in use in several API views.
 
 ```text
 [ ] Problem research
@@ -1681,7 +1644,7 @@ The repository now contains a runnable React dashboard, Django REST API, Postgre
 [ ] EDA
 [ ] ML models
 [ ] Spark processing
-[ ] Kafka streaming
+[x] Daily market-data ingestion
 [ ] Visualization analysis
 [x] Django APIs
 [x] React frontend
