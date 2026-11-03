@@ -18,7 +18,7 @@ class LotSerializer(serializers.Serializer):
     commodity = serializers.CharField(max_length=100)
     quantity_kg = serializers.FloatField()
     quality = serializers.CharField(max_length=80)
-    origin = serializers.CharField(max_length=120)
+    origin = serializers.CharField(max_length=120, required=False, default="")
     asking_price = serializers.FloatField()
     available_on = serializers.DateField()
     status = serializers.ChoiceField(choices=["OPEN", "MATCHED", "SOLD"], default="OPEN")
@@ -29,32 +29,25 @@ class LotSerializer(serializers.Serializer):
         return value
 
 
-class BuyerRequirementSerializer(serializers.Serializer):
-    buyer_name = serializers.CharField(max_length=160)
-    commodity = serializers.CharField(max_length=100)
-    min_quantity_kg = serializers.FloatField()
-    max_quantity_kg = serializers.FloatField()
-    quality = serializers.CharField(max_length=80)
-    location = serializers.CharField(max_length=120)
-    verified = serializers.BooleanField(default=False)
-
-
 class OfferSerializer(serializers.Serializer):
     lot = serializers.CharField(max_length=120)
-    buyer_name = serializers.CharField(max_length=160)
+    offer_source = serializers.CharField(max_length=160)
     price_per_quintal = serializers.FloatField()
     status = serializers.CharField(max_length=20, default="PENDING")
 
 
 class GrievanceSerializer(serializers.Serializer):
-    title = serializers.CharField(max_length=200)
-    category = serializers.CharField(max_length=60)
-    status = serializers.CharField(max_length=30, default="OPEN")
+    farmer_name = serializers.CharField(max_length=160, required=False, default="Anonymous")
+    contact     = serializers.CharField(max_length=80, required=False, default="")
+    description = serializers.CharField(max_length=2000, required=False, default="")
+    title       = serializers.CharField(max_length=200, required=False, default="Farmer complaint")
+    category    = serializers.CharField(max_length=60, required=False, default="General")
+    status      = serializers.CharField(max_length=30, default="OPEN")
 
 
 class TransactionSerializer(serializers.Serializer):
     lot = serializers.CharField(max_length=120)
-    buyer_name = serializers.CharField(max_length=160)
+    counterparty_name = serializers.CharField(max_length=160)
     amount = serializers.FloatField(min_value=0)
     delivery_status = serializers.ChoiceField(choices=["PLANNED", "IN_TRANSIT", "DELIVERED"], default="PLANNED")
     payment_status = serializers.ChoiceField(choices=["PENDING", "PARTIAL", "PAID"], default="PENDING")

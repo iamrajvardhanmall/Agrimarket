@@ -8,8 +8,8 @@ from rest_framework.response import Response
 
 from .db import check_connection, insert_document, list_documents
 from .market_data import fetch_market_data, load_locations
-from .serializers import BuyerRequirementSerializer, GrievanceSerializer, LotSerializer, OfferSerializer
-from .services import calculate_logistics, calculate_recommendation, forecast_prices, match_buyers, summarize_analytics
+from .serializers import GrievanceSerializer, LotSerializer, OfferSerializer
+from .services import calculate_logistics, calculate_recommendation, discover_selling_opportunities, forecast_prices, summarize_analytics
 from .serializers import TransactionSerializer
 
 
@@ -89,58 +89,25 @@ def lots(request):
         return Response({"lots": [{"id": "AGRI-10245", "commodity": "Tomato", "quantity_kg": 5000, "quality": "Grade A", "asking_price": 2800, "offers": 3, "status": "OPEN"}]})
 
 
-@api_view(["GET", "POST"])
-def buyers(request):
-    buyers_payload = [{"name": "FreshKart Foods", "match": 94, "verified": True, "demand": "8-12 tonnes", "location": "Pune"}, {"name": "Sahyadri Processors", "match": 87, "verified": True, "demand": "5-8 tonnes", "location": "Nashik"}, {"name": "GreenBasket Retail", "match": 79, "verified": False, "demand": "3-5 tonnes", "location": "Mumbai"}]
-    if request.method == "POST":
-        serializer = BuyerRequirementSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            return Response(insert_document("buyer_requirements", serializer.validated_data), status=201)
-        except PyMongoError:
-            return Response({"error": "MongoDB is unavailable."}, status=503)
+@api_view(["GET"])
+def opportunities(request):
     try:
-        stored = list_documents("buyer_requirements")
-        return Response({"buyers": stored or buyers_payload})
-    except PyMongoError:
-        return Response({"buyers": buyers_payload})
-
-
-@api_view(["POST"])
-def matches(request):
-    lot = request.data.copy()
-    try:
-        buyers_data = list_documents("buyer_requirements")
-        return Response({"matches": match_buyers(lot, buyers_data)})
-    except PyMongoError:
-        return Response({"matches": []})
-
-
-@api_view(["POST"])
-def aggregations(request):
-    lot_ids = request.data.get("lot_ids", [])
-    if not isinstance(lot_ids, list) or not lot_ids:
-        return Response({"error": "lot_ids must be a non-empty list."}, status=400)
-    try:
-        lots_data = list_documents("lots")
-        selected = [lot for lot in lots_data if lot.get("id") in lot_ids]
-        if not selected:
-            return Response({"error": "No matching lots found."}, status=404)
-        return Response({
-            "commodity": selected[0].get("commodity"),
-            "quality": selected[0].get("quality"),
-            "lot_ids": lot_ids,
-            "quantity_kg": sum(float(lot.get("quantity_kg", 0)) for lot in selected),
-            "lot_count": len(selected),
-            "status": "OPEN",
-        }, status=201)
-    except PyMongoError:
-        return Response({"error": "MongoDB is unavailable."}, status=503)
+        result = discover_selling_opportunities(
+            commodity=request.query_params.get("commodity"),
+            quantity_kg=float(request.query_params.get("quantity_kg", 5000)),
+            quality=request.query_params.get("quality"),
+            state=request.query_params.get("state"),
+            district=request.query_params.get("district"),
+            delivery=request.query_params.get("delivery"),
+        )
+        return Response({"opportunities": result})
+    except (TypeError, ValueError) as exc:
+        return Response({"error": str(exc)}, status=400)
 
 
 @api_view(["GET", "POST"])
 def offers(request):
-    payload = [{"buyer": "FreshKart Foods", "price": 2975, "lot": "AGRI-10245", "status": "PENDING"}, {"buyer": "Sahyadri Processors", "price": 2920, "lot": "AGRI-10245", "status": "PENDING"}, {"buyer": "GreenBasket Retail", "price": 2865, "lot": "AGRI-10245", "status": "PENDING"}]
+    payload = [{"offer_source": "Market offer", "price": 2975, "lot": "AGRI-10245", "status": "PENDING"}, {"offer_source": "Market offer", "price": 2920, "lot": "AGRI-10245", "status": "PENDING"}]
     if request.method == "POST":
         serializer = OfferSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -214,7 +181,7 @@ def analytics(request):
     try:
         collections = {
             name: list_documents(name)
-            for name in ("lots", "offers", "grievances")
+            for name in ("lots", "offers", "grievances", "transactions")
         }
         return Response(summarize_analytics(collections))
     except PyMongoError:

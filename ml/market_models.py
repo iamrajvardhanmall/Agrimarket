@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -24,6 +24,8 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 
@@ -69,6 +71,13 @@ def _preprocessor() -> ColumnTransformer:
     ])
 
 
+def _dense_preprocessor() -> ColumnTransformer:
+    return ColumnTransformer([
+        ("numeric", StandardScaler(), list(NUMERIC_FEATURES)),
+        ("categorical", OneHotEncoder(handle_unknown="ignore", sparse_output=False), list(CATEGORICAL_FEATURES)),
+    ])
+
+
 def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[str, Any]:
     features, prices = _features(records)
     x_train, x_test, y_train, y_test = train_test_split(
@@ -95,14 +104,25 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
     c_train, c_test, l_train, l_test = train_test_split(
         features, labels, test_size=0.2, random_state=random_state, stratify=labels
     )
-    classifier = Pipeline([
-        ("preprocessor", _preprocessor()),
-        ("model", DecisionTreeClassifier(max_depth=8, random_state=random_state)),
-    ])
-    classifier.fit(c_train, l_train)
-    label_predictions = classifier.predict(c_test)
     classes = ["standard", "high"]
-    matrix = confusion_matrix(l_test, label_predictions, labels=classes)
+    classifiers = {
+        "logistic_regression": LogisticRegression(max_iter=1000, random_state=random_state),
+        "decision_tree": DecisionTreeClassifier(max_depth=8, random_state=random_state),
+        "svm": SVC(kernel="rbf", random_state=random_state),
+        "naive_bayes": GaussianNB(),
+    }
+    classification_metrics: dict[str, dict[str, Any]] = {}
+    for name, estimator in classifiers.items():
+        preprocessor = _dense_preprocessor() if name == "naive_bayes" else _preprocessor()
+        classifier = Pipeline([("preprocessor", preprocessor), ("model", estimator)])
+        classifier.fit(c_train, l_train)
+        label_predictions = classifier.predict(c_test)
+        matrix = confusion_matrix(l_test, label_predictions, labels=classes)
+        classification_metrics[name] = {
+            "accuracy": round(float(accuracy_score(l_test, label_predictions)), 4),
+            "f1": round(float(f1_score(l_test, label_predictions, average="weighted")), 4),
+            "confusion_matrix": matrix.tolist(),
+        }
 
     cluster_values = np.array([
         [record["min_price"], record["max_price"], record["modal_price"], record["arrival_quantity"]]
@@ -110,24 +130,37 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
     ])
     cluster_values = StandardScaler().fit_transform(cluster_values)
     clusters = KMeans(n_clusters=3, random_state=random_state, n_init=10).fit(cluster_values)
+    correlation = pd.DataFrame({
+        "min_price": [record["min_price"] for record in records],
+        "max_price": [record["max_price"] for record in records],
+        "modal_price": [record["modal_price"] for record in records],
+        "arrival_quantity": [record["arrival_quantity"] for record in records],
+        "month": [record["month"] for record in records],
+    }).corr().round(4).to_dict()
 
     return {
         "trained_on": len(records),
         "features": list(FEATURES),
         "regression": regression_metrics,
         "classification": {
-            "algorithm": "decision_tree",
             "target": "price_opportunity",
             "classes": classes,
-            "accuracy": round(float(accuracy_score(l_test, label_predictions)), 4),
-            "f1": round(float(f1_score(l_test, label_predictions, average="weighted")), 4),
-            "confusion_matrix": matrix.tolist(),
+            "models": classification_metrics,
         },
         "clustering": {
             "algorithm": "k_means",
             "clusters": int(clusters.n_clusters),
             "cluster_sizes": np.bincount(clusters.labels_, minlength=3).tolist(),
         },
+        "syllabus": {
+            "learning_types": ["supervised", "unsupervised"],
+            "algorithms": [
+                "linear_regression", "logistic_regression", "decision_tree",
+                "k_means", "svm", "naive_bayes",
+            ],
+            "metrics": ["confusion_matrix", "r2", "rmse", "mae"],
+        },
+        "correlation": correlation,
     }
 
 

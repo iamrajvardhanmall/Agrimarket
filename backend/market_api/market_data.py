@@ -21,10 +21,10 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 FALLBACK_MARKETS = [
-    {"id": "nashik", "name": "Nashik APMC", "district": "Nashik", "price": 2850, "trend": 6.8, "arrival": 4210, "distance": 18, "demand": "High", "confidence": 82},
-    {"id": "lasalgaon", "name": "Lasalgaon Market", "district": "Nashik", "price": 2920, "trend": 4.2, "arrival": 3650, "distance": 34, "demand": "High", "confidence": 78},
-    {"id": "pimpalgaon", "name": "Pimpalgaon Baswant", "district": "Nashik", "price": 2760, "trend": 8.9, "arrival": 2980, "distance": 42, "demand": "Medium", "confidence": 74},
-    {"id": "manmad", "name": "Manmad Yard", "district": "Nashik", "price": 2680, "trend": 2.1, "arrival": 5120, "distance": 61, "demand": "Medium", "confidence": 69},
+    {"id": "nashik", "name": "Nashik APMC", "district": "Nashik", "state": "Maharashtra", "commodity_group": "Other", "variety": "FAQ", "price": 2850, "min_price": 2700, "max_price": 3000, "trend": 6.8, "arrival": 4210, "arrival_quantity": 4210, "distance": 18, "demand": "High", "confidence": 82},
+    {"id": "lasalgaon", "name": "Lasalgaon Market", "district": "Nashik", "state": "Maharashtra", "commodity_group": "Other", "variety": "FAQ", "price": 2920, "min_price": 2780, "max_price": 3050, "trend": 4.2, "arrival": 3650, "arrival_quantity": 3650, "distance": 34, "demand": "High", "confidence": 78},
+    {"id": "pimpalgaon", "name": "Pimpalgaon Baswant", "district": "Nashik", "state": "Maharashtra", "commodity_group": "Other", "variety": "FAQ", "price": 2760, "min_price": 2600, "max_price": 2910, "trend": 8.9, "arrival": 2980, "arrival_quantity": 2980, "distance": 42, "demand": "Medium", "confidence": 74},
+    {"id": "manmad", "name": "Manmad Yard", "district": "Nashik", "state": "Maharashtra", "commodity_group": "Other", "variety": "FAQ", "price": 2680, "min_price": 2500, "max_price": 2820, "trend": 2.1, "arrival": 5120, "arrival_quantity": 5120, "distance": 61, "demand": "Medium", "confidence": 69},
 ]
 
 KNOWN_DISTANCES = {
@@ -34,6 +34,7 @@ KNOWN_DISTANCES = {
     "Pimpalgaon Baswant": 42,
     "Manmad": 61,
 }
+
 COMMODITY_GROUPS = {
     "Cereals": {"Bajra(Pearl Millet/Cumbu)", "Barley (Jau)", "Paddy(Common)", "Wheat"},
     "Fibre Crops": {"Cotton", "Jute"},
@@ -43,8 +44,29 @@ COMMODITY_GROUPS = {
 DATASET_PATH = Path(__file__).resolve().parents[2] / "data_engine" / "Dataset.csv"
 
 
-def fallback_market_data(commodity: str | None) -> list[dict]:
-    return [{**market, "commodity": commodity or "All commodities"} for market in FALLBACK_MARKETS]
+def fallback_market_data(
+    commodity: str | None = None,
+    district: str | None = None,
+    state: str | None = None,
+    market: str | None = None,
+    commodity_group: str | None = None,
+    variety: str | None = None,
+) -> list[dict]:
+    records = [{**item, "commodity": commodity or "All commodities"} for item in FALLBACK_MARKETS]
+    filters = {
+        "district": district,
+        "state": state,
+        "market": market,
+        "commodity_group": commodity_group,
+        "variety": variety,
+    }
+    for field, value in filters.items():
+        if value and not value.lower().startswith("all "):
+            records = [
+                item for item in records
+                if str(item.get(field) or item.get("name", "")).casefold() == value.casefold()
+            ]
+    return records
 
 
 def load_locations() -> dict[str, list[str]]:
@@ -121,7 +143,7 @@ def fetch_market_data(
     api_key = os.getenv("MARKET_DATA_API_KEY")
     if not api_key:
         LOGGER.warning("MARKET_DATA_API_KEY is not configured; using bundled market data.")
-        return fallback_market_data(commodity)
+        return fallback_market_data(commodity, district, state, market, commodity_group, variety)
 
     params = {
         "api-key": api_key,
@@ -144,7 +166,7 @@ def fetch_market_data(
         return normalized
     except (OSError, ValueError, TypeError, json.JSONDecodeError, MarketDataError) as exc:
         LOGGER.warning("Market-data API unavailable: %s; using bundled market data.", exc)
-        return fallback_market_data(commodity)
+        return fallback_market_data(commodity, district, state, market, commodity_group, variety)
 
 
 def fetch_market_records(

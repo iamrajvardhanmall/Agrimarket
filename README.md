@@ -1,12 +1,12 @@
 # AgriMarket AI
 
-AgriMarket AI is an agricultural market-intelligence platform that helps farmers and FPOs choose the best selling option using market prices, demand, distance, transport cost, storage cost, and buyer matches. The repository currently provides a runnable public MVP with demo-data fallback, a Django API, a React dashboard, ML insights, and marketplace workflows.
+AgriMarket AI is a farmer-only, syllabus-driven machine-learning platform for agricultural market data. It demonstrates PySpark, Spark MLlib, supervised and unsupervised learning, Linear Regression, Logistic Regression, Decision Tree, K-means, SVM, Naive Bayes, confusion matrices, R², RMSE, MAE, and correlation heat maps while supporting farmer selling decisions.
 
 ## Documentation
 
 The complete documentation is organized in [docs/README.md](docs/README.md). It covers:
 
-- Product requirements and user roles
+- Product requirements and the farmer user journey
 - System architecture and technology boundaries
 - Local setup and MongoDB troubleshooting
 - React frontend dashboard
@@ -66,9 +66,9 @@ python manage.py runserver
 
 `backend/.env.example` lists the supported environment variables. Run backend commands from the `backend/` directory.
 
-The API is available at `http://localhost:8000/api/`. Useful endpoints are `/health/`, `/markets/`, `/recommendations/`, `/lots/`, `/buyers/`, and `/offers/`.
+The API is available at `http://localhost:8000/api/`. Useful endpoints are `/health/`, `/markets/`, `/recommendations/`, `/forecasts/`, `/lots/`, and `/offers/`.
 
-ML evaluation is available at `/api/ml/insights/` and is shown in the dashboard's Machine learning panel. Run `python ml/train_models.py` to train the local models and generate a correlation heatmap.
+ML evaluation is available at `/api/ml/insights/` and is shown in the dashboard's Machine learning panel. Run `python ml/train_models.py` to train the local models and generate a correlation heatmap. Run `python ml/train_spark_models.py --dataset data_engine/Dataset.csv` for the Spark MLlib pipeline.
 
 ### Daily mandi CSV export
 
@@ -99,13 +99,13 @@ npm run build
 
 ## Product direction
 
-The MVP supports a public/no-login farmer and marketplace workflow:
+The MVP supports a public/no-login farmer workflow:
 
-`Farmer inputs lot -> system compares markets -> recommendation ranks net realization -> farmer explores matches -> buyer offers -> delivery/payment tracking`
+`Farmer enters produce details -> system compares markets -> forecast and recommendation rank net realization -> farmer records a lot -> farmer tracks offers and delivery/payment status`
 
 Farmers can filter market data by state, district, market, commodity group,
 commodity, and variety. The decision engine then ranks the filtered markets by
 expected net realization after configurable transport and storage costs, so the
 recommended route is based on estimated profit rather than price alone.
 
-Login/signup, payment processing, production ML training, and deployment infrastructure remain outside the current MVP. Domain records are persisted in MongoDB, with fallback demo data available when the database is unavailable.
+Login/signup, payment processing, production ML training, and deployment infrastructure remain outside the current MVP. The product scope is limited to farmer decision support and farmer-owned records. Domain records are persisted in MongoDB, with fallback demo data available when the database is unavailable.
