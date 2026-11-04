@@ -42,6 +42,59 @@ COMMODITY_GROUPS = {
     "Pulses": {"Bengal Gram(Gram)(Whole)", "Black Gram(Urd Beans)(Whole)", "Arhar (Tur/Red Gram)(Whole)"},
 }
 DATASET_PATH = Path(__file__).resolve().parents[2] / "data_engine" / "Dataset.csv"
+_DATASET_METADATA_CACHE: dict | None = None
+
+
+def load_dataset_metadata() -> dict:
+    global _DATASET_METADATA_CACHE
+    if _DATASET_METADATA_CACHE is not None:
+        return _DATASET_METADATA_CACHE
+
+    locations: dict[str, set[str]] = {}
+    markets_by_district: dict[str, set[str]] = {}
+    commodities: set[str] = set()
+    grades: set[str] = set()
+    varieties: set[str] = set()
+
+    try:
+        with DATASET_PATH.open(encoding="utf-8-sig", newline="") as source:
+            for row in csv.DictReader(source):
+                state = (row.get("State") or "").strip()
+                district = (row.get("District") or "").strip()
+                market = (row.get("Market") or "").strip()
+                commodity = (row.get("Commodity") or "").strip()
+                grade = (row.get("Grade") or "").strip()
+                variety = (row.get("Variety") or "").strip()
+
+                if state and district:
+                    locations.setdefault(state, set()).add(district)
+                if district and market:
+                    markets_by_district.setdefault(district, set()).add(market)
+                if commodity:
+                    commodities.add(commodity)
+                if grade:
+                    grades.add(grade)
+                if variety:
+                    varieties.add(variety)
+    except OSError as exc:
+        LOGGER.warning("Could not read dataset metadata: %s", exc)
+
+    standard_grades = ["Grade A", "Grade B", "Grade C", "FAQ", "Medium", "Large", "Small", "Local"]
+    all_grades = sorted(list(grades.union(standard_grades)))
+
+    _DATASET_METADATA_CACHE = {
+        "locations": {state: sorted(districts) for state, districts in sorted(locations.items())},
+        "markets_by_district": {dist: sorted(mkts) for dist, mkts in sorted(markets_by_district.items())},
+        "commodities": sorted(list(commodities)),
+        "grades": all_grades,
+        "varieties": sorted(list(varieties))[:100],
+    }
+    return _DATASET_METADATA_CACHE
+
+
+def load_locations() -> dict[str, list[str]]:
+    """Return every state and district available in the synchronized dataset."""
+    return load_dataset_metadata()["locations"]
 
 
 def fallback_market_data(
@@ -67,21 +120,6 @@ def fallback_market_data(
                 if str(item.get(field) or item.get("name", "")).casefold() == value.casefold()
             ]
     return records
-
-
-def load_locations() -> dict[str, list[str]]:
-    """Return every state and district available in the synchronized dataset."""
-    locations: dict[str, set[str]] = {}
-    try:
-        with DATASET_PATH.open(encoding="utf-8-sig", newline="") as source:
-            for row in csv.DictReader(source):
-                state = (row.get("State") or "").strip()
-                district = (row.get("District") or "").strip()
-                if state and district:
-                    locations.setdefault(state, set()).add(district)
-    except OSError as exc:
-        LOGGER.warning("Could not read dataset locations: %s", exc)
-    return {state: sorted(districts) for state, districts in sorted(locations.items())}
 
 
 class MarketDataError(RuntimeError):
