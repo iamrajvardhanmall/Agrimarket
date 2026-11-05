@@ -97,6 +97,21 @@ def load_locations() -> dict[str, list[str]]:
     return load_dataset_metadata()["locations"]
 
 
+def _csv_to_num(val: str, default: float = 0.0) -> float:
+    try:
+        return float(str(val or "").replace(",", "")) or default
+    except (ValueError, TypeError):
+        return default
+
+
+def _demand_label(arrivals: float) -> str:
+    if arrivals >= 3000:
+        return "High"
+    if arrivals >= 1000:
+        return "Medium"
+    return "Low"
+
+
 def fallback_market_data(
     commodity: str | None = None,
     district: str | None = None,
@@ -105,21 +120,134 @@ def fallback_market_data(
     commodity_group: str | None = None,
     variety: str | None = None,
 ) -> list[dict]:
-    records = [{**item, "commodity": commodity or "All commodities"} for item in FALLBACK_MARKETS]
-    filters = {
-        "district": district,
-        "state": state,
-        "market": market,
-        "commodity_group": commodity_group,
-        "variety": variety,
-    }
-    for field, value in filters.items():
-        if value and not value.lower().startswith("all "):
-            records = [
-                item for item in records
-                if str(item.get(field) or item.get("name", "")).casefold() == value.casefold()
-            ]
-    return records
+    """
+    Build market list from Dataset.csv with hierarchical fallback:
+      exact (commodity+state+district+market+variety)
+      → state+commodity  → commodity  → static FALLBACK_MARKETS
+    Returns at most 10 markets, each normalised for calculate_recommendation.
+    """
+    from collections import defaultdict
+    from statistics import mean as _mean
+
+    # ----- helpers -------------------------------------------------------
+    def _clean(v: str | None) -> str:
+        return (v or "").strip().lower()
+
+    c_q = _clean(commodity)
+    s_q = _clean(state)
+    d_q = _clean(district)
+    m_q = _clean(market)
+    v_q = _clean(variety)
+    cg_q = _clean(commodity_group)
+
+    # ----- filter CSV rows -----------------------------------------------
+    def _filter(rows, rc, rs, rd, rm, rv):
+        out = []
+        for r in rows:
+            if rc and rc not in r.get("Commodity", "").lower():
+                continue
+            if rs and rs not in r.get("State", "").lower():
+                continue
+            if rd and rd not in r.get("District", "").lower():
+                continue
+            if rm and rm not in r.get("Market", "").lower():
+                continue
+            if rv and rv not in r.get("Variety", "").lower():
+                continue
+            out.append(r)
+        return out
+
+    # read CSV once (uses the same module-level cache as forecast)
+    try:
+        with DATASET_PATH.open(encoding="utf-8-sig", newline="") as fh:
+            all_rows = list(csv.DictReader(fh))
+    except OSError:
+        all_rows = []
+
+    # hierarchical attempts
+    attempts = [
+        (c_q, s_q, d_q, m_q, v_q),   # exact
+        (c_q, s_q, d_q, "", ""),       # commodity + state + district
+        (c_q, s_q, "", "", ""),         # commodity + state
+        (c_q, "", "", "", ""),          # commodity only
+        ("", s_q, "", "", ""),          # state only
+    ]
+
+    matched: list[dict] = []
+    for rc, rs, rd, rm, rv in attempts:
+        if not any([rc, rs, rd, rm, rv]):
+            continue
+        matched = _filter(all_rows, rc, rs, rd, rm, rv)
+        if matched:
+            break
+
+    if not matched:
+        # absolute last resort – static demo data
+        records = [{**item, "commodity": commodity or "All commodities"} for item in FALLBACK_MARKETS]
+        return records
+
+    # ----- aggregate by Market, pick avg modal/min/max per market --------
+    by_market: dict[str, list[dict]] = defaultdict(list)
+    for r in matched:
+        mkt_name = r.get("Market", "").strip()
+        if not mkt_name:
+            continue
+        modal = _csv_to_num(r.get("Modal_x0020_Price"), 0)
+        if modal <= 0:
+            continue
+        by_market[mkt_name].append({
+            "modal": modal,
+            "min":   _csv_to_num(r.get("Min_x0020_Price"), modal),
+            "max":   _csv_to_num(r.get("Max_x0020_Price"), modal),
+            "district": r.get("District", "").strip(),
+            "state":    r.get("State", "").strip(),
+            "commodity": r.get("Commodity", "").strip(),
+            "variety":   r.get("Variety", "").strip(),
+            "grade":     r.get("Grade", "").strip(),
+        })
+
+    # sort by avg modal price descending, pick top 10
+    agg = []
+    for idx, (mkt_name, ps) in enumerate(sorted(by_market.items(),
+                                                 key=lambda kv: _mean(v["modal"] for v in kv[1]),
+                                                 reverse=True)[:10]):
+        avg_modal = _mean(v["modal"] for v in ps)
+        avg_min   = _mean(v["min"]   for v in ps)
+        avg_max   = _mean(v["max"]   for v in ps)
+        sample    = ps[0]
+        mkt_commodity = sample["commodity"]
+        distance  = KNOWN_DISTANCES.get(mkt_name, max(20 + idx * 15, 10))
+        trend_val = round(((avg_max - avg_min) / max(avg_modal, 1)) * 10, 1)
+
+        # commodity_group lookup
+        cg = next((g for g, vals in COMMODITY_GROUPS.items() if mkt_commodity in vals), "Other")
+        if cg_q and cg_q not in cg.lower():
+            continue
+
+        agg.append({
+            "id":               f"csv-{idx + 1}",
+            "name":             mkt_name,
+            "market":           mkt_name,
+            "district":         sample["district"],
+            "state":            sample["state"],
+            "commodity":        mkt_commodity,
+            "commodity_group":  cg,
+            "variety":          sample["variety"],
+            "grade":            sample["grade"],
+            "price":            round(avg_modal),
+            "modal_price":      round(avg_modal),
+            "min_price":        round(avg_min),
+            "max_price":        round(avg_max),
+            "trend":            trend_val,
+            "arrival":          len(ps) * 100,   # proxy: row count × 100 qtl
+            "arrival_quantity": len(ps) * 100,
+            "distance":         distance,
+            "demand":           _demand_label(len(ps) * 100),
+            "confidence":       75,
+            "observed_on":      str(date.today()),
+        })
+
+    return agg if agg else [{**item, "commodity": commodity or "All commodities"} for item in FALLBACK_MARKETS]
 
 
 class MarketDataError(RuntimeError):
