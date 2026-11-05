@@ -12,6 +12,7 @@ An AI-powered agricultural decision-support platform empowering farmers with rea
 [![Django REST Framework](https://img.shields.io/badge/Django-DRF-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.django-rest-framework.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![MongoDB Atlas](https://img.shields.io/badge/Database-MongoDB%20Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
+[![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 [**Explore Live Application »**](https://agrimarket-gold.vercel.app/) · [API Health Check](https://agrimarket-backend-nx69.onrender.com/api/health/) · [Deployment Guide](docs/free-development-guide.md)
@@ -82,6 +83,7 @@ Smallholder farmers across India face severe **price information asymmetry**:
 | **Machine Learning** | Scikit-Learn, Pandas, NumPy | Linear Regression, Decision Trees, K-Means clustering, and time-series projection |
 | **Big Data Pipeline** | PySpark, Spark MLlib | RDD & DataFrame batch processing for large-scale multi-mandi aggregations |
 | **Database** | MongoDB Atlas (Cloud) | Flexible document store for lots, offers, and market analytics |
+| **Containerization** | Docker, Docker Compose, Nginx | Multi-stage production frontend (Nginx), Python 3.12-slim backend, and Mongo 8 container |
 | **Deployment** | Vercel (UI) + Render (API) | 100% zero-cost cloud architecture ($0/month) |
 
 ---
@@ -155,6 +157,50 @@ npm install
 npm run dev
 ```
 Open your browser at: `http://localhost:5173`
+
+---
+
+## 🐳 Containerization & Docker Setup
+
+AgriMarket AI provides complete containerization support for local testing, development isolation, and production deployments.
+
+### 1. Run MongoDB with Docker Compose
+Spin up a local MongoDB 8 instance with persistent storage in one command:
+```bash
+docker compose up -d
+```
+* **Port**: `27017`
+* **Volume**: `mongodb_data` (persists data across restarts)
+* To stop: `docker compose down`
+
+### 2. Backend Container (`backend/Dockerfile`)
+The backend uses a lightweight `python:3.12-slim` container:
+```bash
+cd backend
+
+# Build Docker image
+docker build -t agrimarket-backend .
+
+# Run container (injecting environment variables)
+docker run -d -p 8000:8000 --env-file .env --name agrimarket-api agrimarket-backend
+```
+The Django REST API will be accessible at `http://localhost:8000/api/health/`.
+
+### 3. Frontend Container (`frontend/Dockerfile`)
+The frontend uses a **multi-stage build**:
+1. **Build Stage (`node:22-alpine`)**: Compiles the Vite React bundle.
+2. **Production Stage (`nginx:alpine`)**: Serves optimized static assets with high-performance Nginx.
+
+```bash
+cd frontend
+
+# Build Docker image
+docker build -t agrimarket-frontend .
+
+# Run container
+docker run -d -p 80:80 --name agrimarket-web agrimarket-frontend
+```
+Open `http://localhost` in your browser.
 
 ---
 
