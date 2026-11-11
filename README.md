@@ -204,6 +204,43 @@ Open `http://localhost` in your browser.
 
 ---
 
+## ⏰ Automated 12-Hour Mandi Data Pipeline
+
+The project includes an automated pipeline that executes `python data_engine/fetch_daily_market_data.py` every 12 hours, updates `data_engine/Dataset.csv`, and pushes the updated dataset directly to GitHub.
+
+### 1. Cloud Automation (GitHub Actions)
+A preconfigured GitHub Actions workflow runs every 12 hours (at `00:00` and `12:00` UTC) and also supports manual on-demand execution:
+* **Workflow file**: [`.github/workflows/fetch-market-data.yml`](.github/workflows/fetch-market-data.yml)
+* **Setup requirement**: Add your OGD data.gov.in API key in GitHub:
+  1. Go to repository **Settings** &rarr; **Secrets and variables** &rarr; **Actions**.
+  2. Click **New repository secret**.
+  3. Name: `MARKET_DATA_API_KEY`
+  4. Secret: *(Your data.gov.in API key)*
+  5. Click **Add secret**.
+* **Manual trigger**: Go to the **Actions** tab on GitHub &rarr; select **Auto Fetch Mandi Market Data (Every 12 Hours)** &rarr; click **Run workflow**.
+
+### 2. Local Background Scheduler (Python)
+To run the automated 12-hour scheduler locally on your machine:
+```bash
+# Run continuous 12-hour background loop
+python scripts/auto_fetch_scheduler.py
+
+# Or run once immediately to test
+python scripts/auto_fetch_scheduler.py --once
+```
+
+### 3. Windows Task Scheduler (One-Click Setup)
+On Windows, you can register a persistent background task that runs every 12 hours even when the terminal is closed:
+```powershell
+# Register the 12-hour task in Windows Task Scheduler
+.\scripts\schedule_market_fetch.ps1 -RegisterTask
+
+# To remove the task later
+.\scripts\schedule_market_fetch.ps1 -UnregisterTask
+```
+
+---
+
 ## 🚢 Free Cloud Deployment ($0 / ₹0)
 
 The entire AgriMarket AI platform is configured for **permanent $0 deployment**:
