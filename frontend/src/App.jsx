@@ -1,1511 +1,203 @@
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useReducer, useRef, useState, useTransition } from "react";
+import { useState, useCallback, useTransition, useMemo } from "react";
+import { IconHome, IconSeed, IconChart, IconHelp, IconMenu } from "./components/common/Icons";
+import { Toast } from "./components/common/Toast";
+import { AboutTab } from "./components/tabs/AboutTab";
+import { SellingPlanTab } from "./components/tabs/SellingPlanTab";
+import { MarketsTab } from "./components/tabs/MarketsTab";
+import { HelpTab } from "./components/tabs/HelpTab";
+import { API_BASE_URL } from "./constants/config";
+import { LANGS } from "./constants/translations";
+import { states, demoMarkets } from "./constants/marketData";
+import { useApi } from "./hooks/useApi";
 
-/* ─── Icon glyphs (no external deps) ─── */
-const Glyph = ({ children, className = "", style }) => <span aria-hidden="true" className={className} style={style}>{children}</span>;
-const IconHome      = (p) => <Glyph {...p}>🏠</Glyph>;
-const IconChart     = (p) => <Glyph {...p}>📊</Glyph>;
-const IconLot       = (p) => <Glyph {...p}>📦</Glyph>;
-const IconReceipt   = (p) => <Glyph {...p}>🧾</Glyph>;
-const IconHelp      = (p) => <Glyph {...p}>❓</Glyph>;
-const IconLeaf      = (p) => <Glyph {...p}>🌿</Glyph>;
-const IconPin       = (p) => <Glyph {...p}>📍</Glyph>;
-const IconTruck     = (p) => <Glyph {...p}>🚛</Glyph>;
-const IconRupee     = (p) => <Glyph {...p}>💰</Glyph>;
-const IconUp        = (p) => <Glyph {...p}>↑</Glyph>;
-const IconDown      = (p) => <Glyph {...p}>↓</Glyph>;
-const IconCheck     = (p) => <Glyph {...p}>✅</Glyph>;
-const IconWarn      = (p) => <Glyph {...p}>⚠️</Glyph>;
-const IconStar      = (p) => <Glyph {...p}>⭐</Glyph>;
-const IconWhatsApp  = (p) => <Glyph {...p}>💬</Glyph>;
-const IconClose     = (p) => <Glyph {...p}>✕</Glyph>;
-const IconMenu      = (p) => <Glyph {...p}>☰</Glyph>;
-const IconCalendar  = (p) => <Glyph {...p}>📅</Glyph>;
-const IconSeed      = (p) => <Glyph {...p}>🌾</Glyph>;
-const IconArrow     = (p) => <Glyph {...p}>→</Glyph>;
-
-/* ─── Constants ─── */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
-
-const LANGS = {
-  en: {
-    appName: "AgriMarket",
-    tagline: "Sell smarter. Earn more.",
-    greeting_morning: "Good morning",
-    greeting_day: "Welcome",
-    nav: ["About", "Selling Plan", "Markets", "My Lots", "Transactions", "Help"],
-    todayAdvice: "Today's selling advice",
-    bestMarket: "Best market today",
-    moneyYouGet: "Money you'll receive",
-    afterCosts: "after transport & storage costs",
-    sellNow: "Sell NOW",
-    storeLater: "Store & sell later",
-    altMarket: "Try another market",
-    runAdvice: "Get my selling plan",
-    running: "Calculating…",
-    confidence: "AI Confidence",
-    qty: "How much do you have? (kg)",
-    quality: "Quality of your crop",
-    state: "Your state",
-    district: "Your district",
-    commodity: "Your crop",
-    transport: "Transport cost (₹/qtl/km)",
-    storageDays: "Storage days",
-    storageRate: "Storage cost (₹/kg/day)",
-    compare: "Compare markets",
-    marketName: "Market",
-    modalPrice: "Price (₹/qtl)",
-    profit: "You'll earn",
-    distance: "Distance",
-    demand: "Demand",
-    trend7: "7-day trend",
-    myLots: "My lots",
-    newLot: "+ List a new lot",
-    lotId: "Lot ID",
-    lotCrop: "Crop",
-    lotQty: "Quantity",
-    lotPrice: "Asking price",
-    lotStatus: "Status",
-    offers: "Offers on your lots",
-    accept: "Accept",
-    reject: "Reject",
-    transactions: "Transaction history",
-    grievance: "File a complaint",
-    grievanceDesc: "Describe your issue",
-    submit: "Submit",
-    tips: "Tips to earn more",
-    whatsapp: "Share on WhatsApp",
-    noMarkets: "No markets found. Try changing your crop or district.",
-    forecast: "Price forecast (next 7 days)",
-    open: "OPEN",
-    sold: "SOLD",
-    pending: "PENDING",
-    filter: "Filter",
-    variety: "Variety",
-    allStates: "All states",
-    allDistricts: "All districts",
-    allCrops: "All crops",
-    allVarieties: "All varieties",
-    allMarkets: "All markets",
-    noOffersYet: "No offers yet on your lots.",
-    noLotsYet: "You have no active lots. List one above!",
-    noTransactions: "No transactions yet.",
-    farmerTips: [
-      { icon: "🕐", title: "Sell early in the week", body: "Monday–Wednesday arrivals are lower, so prices tend to be slightly higher." },
-      { icon: "🌦️", title: "Watch the weather", body: "Post-rain harvests flood the market. Hold 3–5 days if rain is forecast." },
-      { icon: "🏷️", title: "Sort your produce", body: "Grade A lots fetch 10–20% more per quintal than mixed-quality lots." },
-      { icon: "🤝", title: "Negotiate transport", body: "Group with neighbours to share a truck and halve your transport cost." },
-      { icon: "📱", title: "Check daily prices", body: "Open this app every morning before deciding when to send your produce." },
-    ],
-    deliveryPref: "Delivery preference",
-    anyDelivery: "Any",
-    farmerDelivers: "I deliver",
-    scheduledPickup: "Scheduled pickup",
-    gradeA: "Grade A",
-    gradeB: "Grade B",
-    mixed: "Mixed quality",
-    faq: "Frequently asked questions",
-    faqs: [
-      { q: "Is this app free?", a: "Yes — completely free, no login required." },
-      { q: "How are prices calculated?", a: "Prices come from government mandi data (data.gov.in). AI predicts the best time to sell." },
-      { q: "What is 'money you'll receive'?", a: "It is your expected income after subtracting transport and storage costs from the market price." },
-      { q: "Can I sell directly through this app?", a: "Not yet. Use this app to choose the best market, then go there and sell. We show you offers from buyers too." },
-      { q: "How do I file a complaint?", a: "Go to the Help tab and fill in the complaint form below." },
-    ],
-    grievanceSuccess: "Complaint submitted. We will contact you within 2 working days.",
-    lotCreated: "Lot listed successfully!",
-  },
-  hi: {
-    appName: "एग्रीमार्केट",
-    tagline: "स्मार्ट बेचें। ज़्यादा कमाएं।",
-    greeting_morning: "सुप्रभात",
-    greeting_day: "नमस्ते",
-    nav: ["परिचय", "बिक्री योजना", "बाज़ार", "मेरे लॉट", "लेन-देन", "सहायता"],
-    todayAdvice: "आज की बिक्री सलाह",
-    bestMarket: "आज का सबसे अच्छा बाज़ार",
-    moneyYouGet: "आपको मिलेगी राशि",
-    afterCosts: "परिवहन और भंडारण के बाद",
-    sellNow: "अभी बेचें",
-    storeLater: "रखें और बाद में बेचें",
-    altMarket: "दूसरा बाज़ार चुनें",
-    runAdvice: "मेरी बिक्री योजना देखें",
-    running: "गणना हो रही है…",
-    confidence: "AI विश्वास",
-    qty: "आपके पास कितना है? (किग्रा)",
-    quality: "फसल की गुणवत्ता",
-    state: "आपका राज्य",
-    district: "आपका जिला",
-    commodity: "आपकी फसल",
-    transport: "परिवहन लागत (₹/क्विंटल/किमी)",
-    storageDays: "भंडारण दिन",
-    storageRate: "भंडारण लागत (₹/किग्रा/दिन)",
-    compare: "बाज़ार तुलना करें",
-    marketName: "बाज़ार",
-    modalPrice: "मूल्य (₹/क्विंटल)",
-    profit: "आप कमाएंगे",
-    distance: "दूरी",
-    demand: "मांग",
-    trend7: "7-दिन का रुझान",
-    myLots: "मेरे लॉट",
-    newLot: "+ नया लॉट दर्ज करें",
-    lotId: "लॉट आईडी",
-    lotCrop: "फसल",
-    lotQty: "मात्रा",
-    lotPrice: "मांगा मूल्य",
-    lotStatus: "स्थिति",
-    offers: "आपके लॉट पर ऑफर",
-    accept: "स्वीकार",
-    reject: "अस्वीकार",
-    transactions: "लेन-देन इतिहास",
-    grievance: "शिकायत दर्ज करें",
-    grievanceDesc: "अपनी समस्या बताएं",
-    submit: "जमा करें",
-    tips: "अधिक कमाने के सुझाव",
-    whatsapp: "WhatsApp पर शेयर करें",
-    noMarkets: "कोई बाज़ार नहीं मिला। अपनी फसल या जिला बदलें।",
-    forecast: "मूल्य पूर्वानुमान (अगले 7 दिन)",
-    open: "खुला",
-    sold: "बेचा",
-    pending: "प्रतीक्षित",
-    filter: "फ़िल्टर",
-    variety: "किस्म",
-    allStates: "सभी राज्य",
-    allDistricts: "सभी जिले",
-    allCrops: "सभी फसलें",
-    allVarieties: "सभी किस्में",
-    allMarkets: "सभी बाज़ार",
-    noOffersYet: "अभी तक कोई ऑफर नहीं।",
-    noLotsYet: "आपका कोई सक्रिय लॉट नहीं है।",
-    noTransactions: "अभी तक कोई लेन-देन नहीं।",
-    farmerTips: [
-      { icon: "🕐", title: "सप्ताह की शुरुआत में बेचें", body: "सोमवार–बुधवार कम आवक होती है, इसलिए कीमतें थोड़ी बेहतर होती हैं।" },
-      { icon: "🌦️", title: "मौसम पर ध्यान दें", body: "बारिश के बाद बाज़ार में ज़्यादा माल आता है। 3–5 दिन रुकें।" },
-      { icon: "🏷️", title: "छँटाई करें", body: "ग्रेड A लॉट 10–20% अधिक कीमत पाते हैं।" },
-      { icon: "🤝", title: "परिवहन बाँटें", body: "पड़ोसियों के साथ ट्रक साझा करें और खर्च आधा करें।" },
-      { icon: "📱", title: "रोज़ कीमत जांचें", body: "हर सुबह इस ऐप से कीमत देखें।" },
-    ],
-    deliveryPref: "डिलीवरी पसंद",
-    anyDelivery: "कोई भी",
-    farmerDelivers: "मैं पहुंचाऊंगा",
-    scheduledPickup: "निर्धारित पिकअप",
-    gradeA: "ग्रेड A",
-    gradeB: "ग्रेड B",
-    mixed: "मिश्रित",
-    faq: "अक्सर पूछे जाने वाले प्रश्न",
-    faqs: [
-      { q: "क्या यह ऐप मुफ़्त है?", a: "हाँ — पूरी तरह मुफ़्त, कोई लॉगिन नहीं चाहिए।" },
-      { q: "कीमतें कैसे तय होती हैं?", a: "कीमतें सरकारी मंडी डेटा (data.gov.in) से आती हैं। AI सबसे अच्छे समय की सलाह देता है।" },
-      { q: "'आपको मिलेगी राशि' क्या है?", a: "परिवहन और भंडारण घटाने के बाद आपकी अपेक्षित आय।" },
-      { q: "क्या मैं इस ऐप से सीधे बेच सकता हूँ?", a: "अभी नहीं। बेहतर बाज़ार चुनें और वहाँ जाकर बेचें।" },
-      { q: "शिकायत कैसे करें?", a: "सहायता टैब में जाएं और नीचे फॉर्म भरें।" },
-    ],
-    grievanceSuccess: "शिकायत दर्ज हुई। 2 कार्य दिवसों में संपर्क करेंगे।",
-    lotCreated: "लॉट सफलतापूर्वक दर्ज हुआ!",
-  },
-};
-
-const commodityGroups = ["Cereals", "Fibre Crops", "Oil Seeds", "Pulses", "Other"];
-const commodities     = ["Tomato", "Onion", "Wheat", "Soybean", "Bajra(Pearl Millet/Cumbu)", "Paddy(Common)", "Cotton", "Maize", "Groundnut", "Mustard"];
-const varieties       = ["FAQ", "Local", "Grade A", "Red", "Other"];
-const states = [
-  "Andhra Pradesh", "Assam", "Bihar", "Chandigarh", "Chhattisgarh",
-  "Delhi", "Goa", "Gujarat", "Haryana", "Himachal Pradesh",
-  "Jammu and Kashmir", "Jharkhand", "Karnataka", "Kerala",
-  "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
-  "Odisha", "Punjab", "Rajasthan", "Tamil Nadu",
-  "Telangana", "Uttar Pradesh", "Uttarakhand", "West Bengal",
-];
-
-const demoMarkets = [
-  { id: "nashik", name: "Nashik APMC", district: "Nashik", state: "Maharashtra", price: 2850, min_price: 2600, max_price: 3100, trend: 6.8, arrival_quantity: 4210, distance: 18, demand: "High", confidence: 82, transport_cost: 3420, storage_cost: 0, net_realization: 138300 },
-  { id: "lasalgaon", name: "Lasalgaon Market", district: "Nashik", state: "Maharashtra", price: 2920, min_price: 2720, max_price: 3050, trend: 4.2, arrival_quantity: 3650, distance: 34, demand: "High", confidence: 78, transport_cost: 6460, storage_cost: 0, net_realization: 139540 },
-  { id: "pimpalgaon", name: "Pimpalgaon Baswant", district: "Nashik", state: "Maharashtra", price: 2760, min_price: 2500, max_price: 2950, trend: 8.9, arrival_quantity: 2980, distance: 42, demand: "Medium", confidence: 74, transport_cost: 7980, storage_cost: 0, net_realization: 130020 },
-  { id: "pune", name: "Pune APMC", district: "Pune", state: "Maharashtra", price: 2700, min_price: 2400, max_price: 3000, trend: -1.2, arrival_quantity: 6100, distance: 85, demand: "Medium", confidence: 69, transport_cost: 16150, storage_cost: 0, net_realization: 119350 },
-];
-
-/* ─── Helpers ─── */
-const fmt = (v) => Number.isFinite(Number(v)) ? `₹${Math.round(Number(v)).toLocaleString("en-IN")}` : "—";
-const fmtNum = (v, s = "") => (v === undefined || v === null || Number(v) === 0) ? "—" : `${Math.round(Number(v)).toLocaleString("en-IN")}${s}`;
-const today = () => new Date().toLocaleDateString("en-IN", { dateStyle: "full" });
-const isMorning = () => new Date().getHours() < 12;
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-const pct = (n) => `${n}%`;
-
-/* ─── Data hook ─── */
-function useApi(url, init) {
-  const [state, set] = useState({ data: init, loading: true, error: null });
-  useEffect(() => {
-    const ac = new AbortController();
-    set(s => ({ ...s, loading: true, error: null }));
-    fetch(url, { signal: ac.signal })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(r.status)))
-      .then(data => set({ data, loading: false, error: null }))
-      .catch(e => { if (e.name !== "AbortError") set(s => ({ ...s, loading: false, error: e })); });
-    return () => ac.abort();
-  }, [url]);
-  return state;
-}
-
-/* ─── Toast ─── */
-function Toast({ msg, onDone }) {
-  useEffect(() => { if (msg) { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); } }, [msg, onDone]);
-  if (!msg) return null;
-  return <div className="toast"><IconCheck /> {msg}</div>;
-}
-
-/* ─── Stat card ─── */
-const StatCard = memo(function StatCard({ label, value, sub, up }) {
-  return (
-    <div className="stat-card">
-      <span className="stat-label">{label}</span>
-      <strong className="stat-value">{value}</strong>
-      {sub && <small className={`stat-sub ${up === true ? "positive" : up === false ? "negative" : ""}`}>{sub}</small>}
-    </div>
-  );
-});
-
-/* ─── Confidence bar ─── */
-function ConfBar({ pct: p }) {
-  const color = p >= 75 ? "#186b50" : p >= 50 ? "#e8b95b" : "#c0392b";
-  return (
-    <div className="conf-bar-wrap">
-      <div className="conf-bar-bg">
-        <div className="conf-bar-fill" style={{ width: `${clamp(p, 0, 100)}%`, background: color }} />
-      </div>
-      <span style={{ color }}>{clamp(p, 0, 100)}%</span>
-    </div>
-  );
-}
-
-/* ─── WhatsApp share ─── */
-function shareWhatsApp(t, market, net, lang) {
-  const msg = lang === "hi"
-    ? `🌾 AgriMarket सलाह: ${market} पर अभी बेचें — ₹${Math.round(net).toLocaleString("en-IN")} मिलेंगे!\nagrimarket.app`
-    : `🌾 AgriMarket tip: Sell at ${market} now — you'll earn ${fmt(net)}!\nagrimarket.app`;
-  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank", "noopener");
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   ABOUT TAB (HOME PAGE)
-═══════════════════════════════════════════════════════════════ */
-function AboutTab({ t, onGoToPlan, onGoToMarkets }) {
-  const isHi = t.appName === "एग्रीमार्केट";
-  return (
-    <div className="tab-content about-page">
-      {/* ── Hero ── */}
-      <div className="hero-card about-hero">
-        <div className="hero-badge">🌱 {isHi ? "किसान-प्रथम कृषि निर्णय मंच" : "Farmer-First Decision Platform"}</div>
-        <h1 className="hero-title" style={{ fontSize: "28px", lineHeight: "1.3" }}>
-          {isHi ? "स्मार्ट बेचें। ज़्यादा कमाएं।" : "Sell Smarter. Earn More."}
-        </h1>
-        <p style={{ opacity: 0.9, fontSize: "16px", maxWidth: "680px", marginBottom: "20px", lineHeight: "1.6" }}>
-          {isHi
-            ? "एग्रीमार्केट एआई किसानों को देश भर की मंडियों के सटीक भाव, 7-दिवसीय एआई मूल्य पूर्वानुमान और परिवहन-भंडारण खर्च घटाकर आपका शुद्ध वास्तविक मुनाफा बताता है।"
-            : "AgriMarket AI helps farmers make confident selling decisions by analyzing real-time mandi prices, projecting 7-day ML price forecasts, and calculating true net profits after transport and storage costs."}
-        </p>
-
-        <div className="hero-actions" style={{ gap: "12px", marginTop: "10px" }}>
-          <button className="btn-primary" onClick={onGoToPlan} style={{ fontSize: "15px", padding: "14px 24px" }}>
-            🌾 {isHi ? "अपनी बिक्री योजना बनाएं" : "Calculate Selling Plan"} →
-          </button>
-          <button className="btn-secondary" onClick={onGoToMarkets} style={{ background: "rgba(255,255,255,0.18)", color: "#fff", borderColor: "rgba(255,255,255,0.4)" }}>
-            📊 {isHi ? "मंडी भाव देखें" : "Explore Mandi Prices"}
-          </button>
-        </div>
-
-        {/* Quick Highlights bar */}
-        <div className="about-stats-strip">
-          <div className="stat-pill">
-            <strong>10,000+</strong>
-            <span>{isHi ? "मंडी रिकॉर्ड" : "Mandi Records"}</span>
-          </div>
-          <div className="stat-pill">
-            <strong>7-Day</strong>
-            <span>{isHi ? "एमएल पूर्वानुमान" : "ML Forecasts"}</span>
-          </div>
-          <div className="stat-pill">
-            <strong>₹0 / Free</strong>
-            <span>{isHi ? "बिना लॉगिन तुरंत" : "No Login Needed"}</span>
-          </div>
-          <div className="stat-pill">
-            <strong>EN + हिंदी</strong>
-            <span>{isHi ? "दोभाषी सहायता" : "Bilingual"}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── The Problem & The Solution ── */}
-      <div className="card">
-        <h2 className="card-title" style={{ marginBottom: "16px" }}>
-          💡 {isHi ? "एग्रीमार्केट एआई क्यों आवश्यक है?" : "Why AgriMarket AI?"}
-        </h2>
-        <div className="about-compare-grid">
-          <div className="compare-card bad">
-            <div className="compare-tag bad-tag">❌ {isHi ? "पारंपरिक तरीका" : "The Traditional Struggle"}</div>
-            <h4>{isHi ? "अधूरे भावों पर निर्णय" : "Misleading Gross Prices"}</h4>
-            <p>
-              {isHi
-                ? "दूर की मंडी में ₹200 ज़्यादा दिखते हैं, लेकिन डीजल, लोडिंग और समय के नुकसान के बाद अक्सर किसान घाटे में रहता है।"
-                : "A mandi 60 km away may advertise ₹200/quintal more, but after paying high transport and transit losses, take-home profit is often lower."}
-            </p>
-          </div>
-          <div className="compare-card good">
-            <div className="compare-tag good-tag">✅ {isHi ? "एग्रीमार्केट का समाधान" : "The AgriMarket Advantage"}</div>
-            <h4>{isHi ? "शुद्ध वास्तविक मुनाफा" : "True Net Realization"}</h4>
-            <p>
-              {isHi
-                ? "हम आपके वास्तविक परिवहन (₹/क्विंटल/किमी) और भंडारण खर्च को घटाकर बताते हैं कि आज कहाँ बेचना सबसे अधिक लाभदायक है।"
-                : "We subtract actual transit distance costs and storage holding rates to rank mandis by net profit in your pocket, with 'Sell Now vs. Store' advice."}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 3-Step Journey ── */}
-      <div className="card">
-        <h2 className="card-title" style={{ marginBottom: "20px" }}>
-          🚜 {isHi ? "यह कैसे काम करता है? (3 आसान चरण)" : "How It Works (3 Simple Steps)"}
-        </h2>
-        <div className="about-steps-grid">
-          <div className="about-step-item">
-            <div className="step-num">1</div>
-            <div className="step-icon">🌾</div>
-            <h3>{isHi ? "अपनी फसल चुनें" : "Select Produce"}</h3>
-            <p>{isHi ? "अपनी फसल (टमाटर, प्याज, गेहूं आदि), राज्य, जिला और फसल की मात्रा दर्ज करें।" : "Choose your crop, your home district, and total harvest quantity."}</p>
-          </div>
-          <div className="about-step-item">
-            <div className="step-num">2</div>
-            <div className="step-icon">🤖</div>
-            <h3>{isHi ? "एआई तुलना करता है" : "AI Analyzes Costs"}</h3>
-            <p>{isHi ? "मशीन लर्निंग मॉडल आसपास की मंडियों, दूरी और भंडारण खर्च का सटीक आकलन करता है।" : "Our ML engine compares nearby mandis, transit kilometers, and holding costs."}</p>
-          </div>
-          <div className="about-step-item">
-            <div className="step-num">3</div>
-            <div className="step-icon">💰</div>
-            <h3>{isHi ? "अधिकतम लाभ कमाएं" : "Maximize Earnings"}</h3>
-            <p>{isHi ? "सर्वश्रेष्ठ मंडी की अनुशंसा और 7-दिवसीय मूल्य रुझान के साथ सही समय पर बेचें।" : "Receive rank-ordered recommendations with expected take-home income and confidence."}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Feature Highlights ── */}
-      <div className="about-features-grid">
-        <div className="feature-card">
-          <div className="feature-icon">📈</div>
-          <h3>{isHi ? "7-दिवसीय मूल्य पूर्वानुमान" : "7-Day ML Price Forecasting"}</h3>
-          <p>{isHi ? "ऐतिहासिक मंडी आवक पर प्रशिक्षित लीनियर रिग्रेशन और डिसीजन ट्री मॉडल अगले सप्ताह के भाव का पूर्वानुमान लगाते हैं।" : "Time-series regression models trained on multi-year mandi records project expected modal price movements."}</p>
-        </div>
-        <div className="feature-card">
-          <div className="feature-icon">🚚</div>
-          <h3>{isHi ? "सटीक परिवहन लागत" : "Custom Transport Economics"}</h3>
-          <p>{isHi ? "प्रति क्विंटल प्रति किलोमीटर परिवहन खर्च को जोड़कर वास्तविक मुनाफा निकालें।" : "Configure your local ₹/qtl/km transit and ₹/kg/day storage rates for pinpoint net profitability."}</p>
-        </div>
-        <div className="feature-card">
-          <div className="feature-icon">📦</div>
-          <h3>{isHi ? "लॉट एवं इन्वेंट्री प्रबंधन" : "Lot Listing & Offers"}</h3>
-          <p>{isHi ? "अपनी उपज के लॉट बनाएं, न्यूनतम आरक्षित मूल्य तय करें और खरीदारों के प्रस्तावों को ट्रैक करें।" : "Create farmer-owned produce lots, set reserve asking prices, and track buyer bids transparently."}</p>
-        </div>
-        <div className="feature-card">
-          <div className="feature-icon">🛡️</div>
-          <h3>{isHi ? "ऑफलाइन सुरक्षित तकनीक" : "Zero-Crash Reliability"}</h3>
-          <p>{isHi ? "सरकारी सर्वर धीमे होने पर भी अंतर्निहित डेटासेट से निरंतर और त्वरित सेवाएं।" : "Built with graceful hierarchical CSV fallbacks so the app never crashes even during upstream API outages."}</p>
-        </div>
-      </div>
-
-      {/* ── Mission & Open Data Notice ── */}
-      <div className="card" style={{ background: "linear-gradient(135deg, #10523f 0%, #186b50 100%)", color: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap", justifyContent: "space-between" }}>
-          <div>
-            <span style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", opacity: 0.8 }}>
-              {isHi ? "हमारा संकल्प" : "Our Mission"}
-            </span>
-            <h3 style={{ fontSize: "20px", marginTop: "4px", marginBottom: "8px" }}>
-              {isHi ? "भारतीय किसानों के लिए पारदर्शी और सुलभ तकनीक" : "Bridging Information Asymmetry for Every Indian Farmer"}
-            </h3>
-            <p style={{ opacity: 0.85, fontSize: "14px", maxWidth: "600px", lineHeight: "1.5" }}>
-              {isHi
-                ? "ओपन गवर्नमेंट डेटा (data.gov.in / AGMARKNET) के आधिकारिक मंडी आंकड़ों पर आधारित। 100% निशुल्क और सभी किसानों के लिए सहज।"
-                : "Powered by authentic Open Government Data (data.gov.in / AGMARKNET). Completely free, open to all, with no passwords or account barriers."}
-            </p>
-          </div>
-          <button className="btn-primary" onClick={onGoToPlan} style={{ minWidth: "180px", justifyContent: "center" }}>
-            🌾 {isHi ? "शुरू करें →" : "Get Started →"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   HOME / SELLING PLAN TAB
-═══════════════════════════════════════════════════════════════ */
-function HomeTab({ t, markets, recommendation, decisionOptions, ranking, forecast, forecastLoading,
-                   quantity, setQuantity, quality, setQuality,
-                   state, setState, district, setDistrict,
-                   commodity, setCommodity, commodityGroup, setCommodityGroup,
-                   variety, setVariety, transportRate, setTransportRate,
-                   storageDays, setStorageDays, storageRate, setStorageRate,
-                   deliveryPref, setDeliveryPref,
-                   runRecommendation, loading, isRecommendationPending,
-                   availableStates, availableDistricts, dataError, lang }) {
-  const best = markets[0] || demoMarkets[0];
-  const recommended = decisionOptions.find(o => o.type === recommendation?.type) || decisionOptions[0];
-  const net = recommended?.net_realization ?? best?.net_realization ?? 0;
-  const conf = recommendation?.confidence ?? best?.confidence ?? 0;
-  const label = recommendation?.label || t.sellNow;
-  const marketName = recommendation?.market || best?.name || "—";
-
-  return (
-    <div className="tab-content">
-      {/* ── Hero ── */}
-      <div className="hero-card">
-        <div className="hero-badge"><IconSeed /> {today()}</div>
-        <h1 className="hero-title">{t.todayAdvice}</h1>
-        <div className="hero-market">
-          <IconPin /> <strong>{marketName}</strong>
-          {best?.distance ? <span className="muted"> · {best.distance} km</span> : null}
-          {best?.demand   ? <span className={`demand-pill demand-${(best.demand||"").toLowerCase()}`}>{best.demand}</span> : null}
-        </div>
-        <div className="hero-net">
-          <span className="hero-net-label">{t.moneyYouGet}</span>
-          <span className="hero-net-value">{fmt(net)}</span>
-          <span className="hero-net-sub">{t.afterCosts}</span>
-        </div>
-        <div className="hero-actions">
-          <button className="btn-primary" onClick={runRecommendation} disabled={loading || isRecommendationPending}>
-            {loading || isRecommendationPending ? t.running : <>{t.runAdvice} <IconArrow /></>}
-          </button>
-          <button className="btn-whatsapp" onClick={() => shareWhatsApp(t, marketName, net, lang)}>
-            <IconWhatsApp /> {t.whatsapp}
-          </button>
-        </div>
-        {conf > 0 && <div className="hero-conf"><span>{t.confidence}</span><ConfBar pct={conf} /></div>}
-      </div>
-
-      {dataError && <div className="notice warn"><IconWarn /> {dataError}</div>}
-
-      {/* ── Scenarios ── */}
-      {decisionOptions.length > 0 && (
-        <section className="panel">
-          <h2 className="panel-title">{t.sellNow} vs {t.storeLater}</h2>
-          <div className="scenario-grid">
-            {decisionOptions.map(opt => (
-              <div key={opt.type} className={`scenario-card ${opt.type === recommendation?.type ? "scenario-best" : ""}`}>
-                {opt.type === recommendation?.type && <span className="scenario-badge"><IconStar /> AI picks this</span>}
-                <strong>{opt.label}</strong>
-                <div className="scenario-market"><IconPin /> {opt.market}</div>
-                <div className="scenario-net">{fmt(opt.net_realization)}</div>
-                <small>{t.moneyYouGet}</small>
-              </div>
-            ))}
-          </div>
-          {recommendation?.reason && <p className="muted reason-text"><IconWarn className="inline" /> {recommendation.reason}</p>}
-        </section>
-      )}
-
-      {/* ── Wizard form ── */}
-      <section className="panel">
-        <h2 className="panel-title">{t.filter}</h2>
-        <div className="wizard-grid">
-          <label className="field">
-            <span>{t.commodity}</span>
-            <select value={commodity} onChange={e => { setCommodity(e.target.value); setCommodityGroup(""); }}>
-              <option value="">{t.allCrops}</option>
-              {commodities.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>{t.qty}</span>
-            <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>{t.quality}</span>
-            <select value={quality} onChange={e => setQuality(e.target.value)}>
-              <option>{t.gradeA}</option><option>{t.gradeB}</option><option>{t.mixed}</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>{t.state}</span>
-            <select value={state} onChange={e => { setState(e.target.value); setDistrict(""); }}>
-              <option value="">{t.allStates}</option>
-              {availableStates.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>{t.district}</span>
-            <select value={district} onChange={e => setDistrict(e.target.value)} disabled={!state}>
-              <option value="">{state ? t.allDistricts : "Select state first"}</option>
-              {availableDistricts.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>{t.variety}</span>
-            <select value={variety} onChange={e => setVariety(e.target.value)}>
-              <option value="">{t.allVarieties}</option>
-              {varieties.map(v => <option key={v}>{v}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span>{t.transport}</span>
-            <input type="number" min="0" step="0.5" value={transportRate} onChange={e => setTransportRate(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>{t.storageDays}</span>
-            <input type="number" min="0" value={storageDays} onChange={e => setStorageDays(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>{t.storageRate}</span>
-            <input type="number" min="0" step="0.5" value={storageRate} onChange={e => setStorageRate(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>{t.deliveryPref}</span>
-            <select value={deliveryPref} onChange={e => setDeliveryPref(e.target.value)}>
-              <option value="">{t.anyDelivery}</option>
-              <option value="Farmer delivers">{t.farmerDelivers}</option>
-              <option value="Scheduled pickup">{t.scheduledPickup}</option>
-            </select>
-          </label>
-        </div>
-        <button className="btn-primary full-width" onClick={runRecommendation} disabled={loading || isRecommendationPending}>
-          {loading || isRecommendationPending ? t.running : <>{t.runAdvice} <IconArrow /></>}
-        </button>
-      </section>
-
-      {/* ── Tips ── */}
-      <section className="panel">
-        <h2 className="panel-title"><IconLeaf /> {t.tips}</h2>
-        <div className="tips-grid">
-          {t.farmerTips.map((tip, i) => (
-            <div className="tip-card" key={i}>
-              <span className="tip-icon">{tip.icon}</span>
-              <div><strong>{tip.title}</strong><p>{tip.body}</p></div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SVG CHART PRIMITIVES  (pure SVG, no external library)
-═══════════════════════════════════════════════════════════════ */
-
-/** Horizontal bar chart – one coloured bar per market */
-function HBarChart({ data, valueKey, label, color = "#186b50", fmt: fmtFn = fmt }) {
-  if (!data.length) return null;
-  const vals   = data.map(d => Number(d[valueKey]) || 0);
-  const maxVal = Math.max(...vals, 1);
-  const H      = 36;          // row height
-  const LW     = 130;         // label column width
-  const W      = 480;         // bar area width
-  const height = data.length * H + 10;
-  return (
-    <svg viewBox={`0 0 ${LW + W + 60} ${height}`} className="svg-chart" aria-label={label}>
-      {data.map((d, i) => {
-        const val    = Number(d[valueKey]) || 0;
-        const barW   = (val / maxVal) * W;
-        const y      = i * H + 4;
-        const isBest = i === 0;
-        const fill   = isBest ? color : "#a8d4bd";
-        return (
-          <g key={d.name || i}>
-            {/* Market name */}
-            <text x={LW - 6} y={y + H / 2 + 5} textAnchor="end" fontSize="11" fill="#6b7e76"
-              className="chart-label">{(d.name || "").replace(" APMC","").replace(" Market","")}</text>
-            {/* Background track */}
-            <rect x={LW} y={y + 4} width={W} height={H - 10} rx="4" fill="#f0ede4" />
-            {/* Value bar */}
-            <rect x={LW} y={y + 4} width={Math.max(barW, 2)} height={H - 10} rx="4" fill={fill} />
-            {/* Value label */}
-            <text x={LW + barW + 6} y={y + H / 2 + 5} fontSize="11" fill={isBest ? color : "#6b7e76"}
-              fontWeight={isBest ? "700" : "400"}>{fmtFn(val)}</text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-/** Price range chart — min / modal / max shown as a horizontal range bar */
-function PriceRangeChart({ data }) {
-  if (!data.length) return null;
-  const allPrices = data.flatMap(d => [d.min_price, d.price, d.max_price].map(Number).filter(Boolean));
-  const minAll = Math.min(...allPrices);
-  const maxAll = Math.max(...allPrices, minAll + 1);
-  const H  = 40;
-  const LW = 130;
-  const W  = 400;
-  const height = data.length * H + 20;
-  const toX = (v) => LW + ((Number(v) - minAll) / (maxAll - minAll)) * W;
-
-  return (
-    <svg viewBox={`0 0 ${LW + W + 80} ${height}`} className="svg-chart" aria-label="Price range per market">
-      {/* Axis labels */}
-      <text x={LW} y={height - 2} fontSize="10" fill="#aaa">{fmt(minAll)}</text>
-      <text x={LW + W} y={height - 2} fontSize="10" fill="#aaa" textAnchor="end">{fmt(maxAll)}</text>
-
-      {data.map((d, i) => {
-        const y     = i * H + 6;
-        const xMin  = toX(d.min_price || d.price);
-        const xMid  = toX(d.price);
-        const xMax  = toX(d.max_price || d.price);
-        const isBest = i === 0;
-        return (
-          <g key={d.name || i}>
-            <text x={LW - 6} y={y + H / 2 + 4} textAnchor="end" fontSize="11" fill="#6b7e76">
-              {(d.name || "").replace(" APMC","").replace(" Market","")}
-            </text>
-            {/* Range line */}
-            <line x1={xMin} x2={xMax} y1={y + H/2} y2={y + H/2} stroke="#c5ddd1" strokeWidth="6" strokeLinecap="round" />
-            {/* Modal price dot */}
-            <circle cx={xMid} cy={y + H/2} r="7" fill={isBest ? "#186b50" : "#6cb290"} />
-            <circle cx={xMid} cy={y + H/2} r="3" fill="#fff" />
-            {/* Min tick */}
-            <line x1={xMin} x2={xMin} y1={y + H/2 - 5} y2={y + H/2 + 5} stroke="#b0cfc0" strokeWidth="2" />
-            {/* Max tick */}
-            <line x1={xMax} x2={xMax} y1={y + H/2 - 5} y2={y + H/2 + 5} stroke="#b0cfc0" strokeWidth="2" />
-            {/* Modal label */}
-            <text x={xMid} y={y + 10} textAnchor="middle" fontSize="10" fill={isBest ? "#186b50" : "#888"}
-              fontWeight={isBest ? "700" : "400"}>{fmt(d.price)}</text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-/** Multi-line SVG chart for 7-day forecast */
-function ForecastLineChart({ forecast }) {
-  if (!forecast?.forecasts) return null;
-  const days   = Array.from({ length: 7 }, (_, i) => i + 1);
-  const vals   = days.map(d => Number(forecast.forecasts[`${d}_day`]) || 0);
-  const minV   = Math.min(...vals) * 0.995;
-  const maxV   = Math.max(...vals) * 1.005;
-  const W = 500; const H = 160; const PAD = 40;
-  const iW = W - PAD * 2; const iH = H - PAD * 2;
-  const toX = (i) => PAD + (i / (days.length - 1)) * iW;
-  const toY = (v) => PAD + iH - ((v - minV) / (maxV - minV)) * iH;
-  const pts  = days.map((_, i) => `${toX(i)},${toY(vals[i])}`).join(" ");
-  const areaD = `M${toX(0)},${toY(vals[0])} ` + days.slice(1).map((_, i) => `L${toX(i+1)},${toY(vals[i+1])}`).join(" ") +
-                ` L${toX(days.length-1)},${PAD + iH} L${toX(0)},${PAD + iH} Z`;
-
-  // detect direction
-  const rising = vals[vals.length - 1] > vals[0];
-  const lineColor = rising ? "#186b50" : "#c0392b";
-  const areaColor = rising ? "#186b50" : "#c0392b";
-
-  // compute x-axis date labels (Day 1 = tomorrow, Day 2 = day after, …)
-  const today = new Date();
-  const dayLabel = (offset) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + offset);
-    return `${String(d.getDate()).padStart(2,"0")} ${d.toLocaleString("en-IN",{month:"short"})}`;
-  };
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="svg-chart" aria-label="7-day price forecast">
-      {/* Grid lines */}
-      {[0.25, 0.5, 0.75, 1].map(f => {
-        const y = PAD + iH * (1 - f);
-        const v = minV + (maxV - minV) * f;
-        return (
-          <g key={f}>
-            <line x1={PAD} x2={PAD + iW} y1={y} y2={y} stroke="#e8e4da" strokeWidth="1" />
-            <text x={PAD - 4} y={y + 4} textAnchor="end" fontSize="10" fill="#aaa">{fmt(v)}</text>
-          </g>
-        );
-      })}
-      {/* Area fill */}
-      <path d={areaD} fill={areaColor} opacity="0.08" />
-      {/* Line */}
-      <polyline points={pts} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {/* Dots + labels */}
-      {days.map((d, i) => (
-        <g key={d}>
-          <circle cx={toX(i)} cy={toY(vals[i])} r="4" fill={lineColor} />
-          <circle cx={toX(i)} cy={toY(vals[i])} r="2" fill="#fff" />
-          <text x={toX(i)} y={PAD + iH + 16} textAnchor="middle" fontSize="10" fill="#888">{dayLabel(d)}</text>
-          <text x={toX(i)} y={toY(vals[i]) - 10} textAnchor="middle" fontSize="10" fill={lineColor}
-            fontWeight="600">{fmt(vals[i])}</text>
-        </g>
-      ))}
-      {/* Direction badge */}
-      <text x={PAD + iW} y={PAD - 6} textAnchor="end" fontSize="11" fill={lineColor} fontWeight="700">
-        {rising ? "↑ Price rising" : "↓ Price falling"}
-      </text>
-    </svg>
-  );
-}
-
-/** Grouped bar chart: modal price vs net realization per market */
-function PriceVsNetChart({ data }) {
-  if (!data.length) return null;
-  const prices = data.map(d => Number(d.price) || 0);
-  const nets   = data.map(d => Number(d.net_realization) || 0);
-  const maxVal = Math.max(...prices, ...nets, 1);
-  const BW     = 22;   // bar width
-  const GAP    = 6;    // gap between pair
-  const GRP    = 60;   // group width
-  const PAD    = 48;
-  const H      = 180;
-  const iH     = H - PAD - 20;
-  const W      = data.length * GRP + PAD * 2;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="svg-chart" aria-label="Price vs net realization">
-      {/* Y grid */}
-      {[0.25, 0.5, 0.75, 1].map(f => {
-        const y = PAD + iH * (1 - f);
-        const v = maxVal * f;
-        return (
-          <g key={f}>
-            <line x1={PAD} x2={W - PAD + 20} y1={y} y2={y} stroke="#e8e4da" strokeWidth="1" />
-            <text x={PAD - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#aaa">{fmt(v)}</text>
-          </g>
-        );
-      })}
-      {data.map((d, i) => {
-        const cx     = PAD + i * GRP + GRP / 2;
-        const ph     = (prices[i] / maxVal) * iH;
-        const nh     = (nets[i]   / maxVal) * iH;
-        const pY     = PAD + iH - ph;
-        const nY     = PAD + iH - nh;
-        const label  = (d.name || "").replace(" APMC","").replace(" Market","").split(" ")[0];
-        return (
-          <g key={d.name || i}>
-            {/* Price bar */}
-            <rect x={cx - BW - GAP/2} y={pY} width={BW} height={ph} rx="3" fill="#6cb290" />
-            {/* Net bar */}
-            <rect x={cx + GAP/2}       y={nY} width={BW} height={nh} rx="3" fill="#186b50" />
-            {/* X label */}
-            <text x={cx} y={PAD + iH + 14} textAnchor="middle" fontSize="10" fill="#6b7e76">{label}</text>
-          </g>
-        );
-      })}
-      {/* Legend */}
-      <rect x={PAD} y={6} width="10" height="10" rx="2" fill="#6cb290" />
-      <text x={PAD + 14} y={15} fontSize="10" fill="#6b7e76">Modal price</text>
-      <rect x={PAD + 90} y={6} width="10" height="10" rx="2" fill="#186b50" />
-      <text x={PAD + 104} y={15} fontSize="10" fill="#6b7e76">You'll earn</text>
-    </svg>
-  );
-}
-
-/** Arrival volume donut / bubble chart */
-function ArrivalBubbleChart({ data }) {
-  if (!data.length) return null;
-  const vals  = data.map(d => Number(d.arrival_quantity ?? d.arrival) || 0);
-  const total = vals.reduce((a, b) => a + b, 0) || 1;
-  const maxV  = Math.max(...vals, 1);
-  const W = 500; const CY = 80; const R_MAX = 50;
-  const colors = ["#186b50","#6cb290","#a8d4bd","#c5ddd1","#e6f2ec"];
-  const cx = (i) => 60 + i * (W / data.length);
-
-  return (
-    <svg viewBox={`0 0 ${W} ${CY * 2 + 20}`} className="svg-chart" aria-label="Market arrival volume">
-      {data.map((d, i) => {
-        const v   = vals[i];
-        const r   = Math.max(10, (v / maxV) * R_MAX);
-        const pct = total > 0 ? Math.round(v / total * 100) : 0;
-        return (
-          <g key={d.name || i}>
-            <circle cx={cx(i)} cy={CY} r={r} fill={colors[i % colors.length]} opacity="0.85" />
-            <text x={cx(i)} y={CY + 4} textAnchor="middle" fontSize="11" fill="#fff" fontWeight="700">
-              {pct}%
-            </text>
-            <text x={cx(i)} y={CY + r + 14} textAnchor="middle" fontSize="10" fill="#6b7e76">
-              {(d.name || "").replace(" APMC","").replace(" Market","").split(" ")[0]}
-            </text>
-            <text x={cx(i)} y={CY + r + 26} textAnchor="middle" fontSize="9" fill="#aaa">
-              {fmtNum(v)} kg
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   MARKETS TAB
-═══════════════════════════════════════════════════════════════ */
-function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dataError }) {
-  const [chartTab, setChartTab] = useState("range");
-  const best = markets[0] || demoMarkets[0];
-  const CHART_TABS = [
-    { id: "range",    label: "📏 Price Range" },
-    { id: "earnings", label: "💰 Earnings Compare" },
-    { id: "arrivals", label: "🚜 Market Volume" },
-    { id: "net",      label: "📊 Net Realization" },
-  ];
-
-  /* ── Conditioned forecast state ── */
-  const [fcState,     setFcState]     = useState("");
-  const [fcDistrict,  setFcDistrict]  = useState("");
-  const [fcMarket,    setFcMarket]    = useState("");
-  const [fcCommodity, setFcCommodity] = useState("");
-  const [fcVariety,   setFcVariety]   = useState("");
-  const [fcGrade,     setFcGrade]     = useState("");
-  const [fcData,      setFcData]      = useState(null);
-  const [fcLoading,   setFcLoading]   = useState(false);
-  const [fcMeta,      setFcMeta]      = useState({ commodities: [], grades: [], locations: {}, markets_by_district: {} });
-
-  /* Load dropdown metadata once */
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/forecast/metadata/`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setFcMeta(d); })
-      .catch(() => {});
-  }, []);
-
-  /* Fetch conditioned forecast whenever any filter changes */
-  useEffect(() => {
-    if (!fcCommodity && !fcState) { setFcData(null); return; }
-    const params = new URLSearchParams();
-    if (fcState)     params.set("state",     fcState);
-    if (fcDistrict)  params.set("district",  fcDistrict);
-    if (fcMarket)    params.set("market",    fcMarket);
-    if (fcCommodity) params.set("commodity", fcCommodity);
-    if (fcVariety)   params.set("variety",   fcVariety);
-    if (fcGrade)     params.set("grade",     fcGrade);
-    setFcLoading(true);
-    fetch(`${API_BASE_URL}/forecast/conditioned/?${params}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && !d.error) setFcData(d); })
-      .catch(() => {})
-      .finally(() => setFcLoading(false));
-  }, [fcState, fcDistrict, fcMarket, fcCommodity, fcVariety, fcGrade]);
-
-  /* Helpers */
-  const fcStateDistricts  = fcMeta.locations?.[fcState]        || [];
-  const fcDistrictMarkets = fcMeta.markets_by_district?.[fcDistrict] || [];
-  const matchColors = { exact: "#186b50", district_grade: "#2a7a5f", district: "#3d8f70",
-                        state: "#c08000", commodity: "#e07000", baseline: "#b04040" };
-  const trendIcon = d =>
-    d === "rising"  ? "📈" :
-    d === "falling" ? "📉" : "📊";
-  const noticeCls = d =>
-    d === "rising"  ? "success" :
-    d === "falling" ? "warn" : "info";
-  return (
-    <div className="tab-content">
-      <div className="panel-heading-row">
-        <h2 className="panel-title">{t.compare}</h2>
-        {ranking?.highest_profit_route && (
-          <span className="badge-green"><IconStar /> {ranking.highest_profit_route.market}</span>
-        )}
-      </div>
-      {dataError && <div className="notice warn"><IconWarn /> {dataError}</div>}
-
-      {/* Markets table */}
-      <section className="panel">
-        <div className="market-table-wrap">
-          <table className="market-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>{t.marketName}</th>
-                <th>{t.modalPrice}</th>
-                <th>Min / Max</th>
-                <th>{t.distance}</th>
-                <th>{t.demand}</th>
-                <th>{t.trend7}</th>
-                <th>{t.profit}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {markets.map((m, i) => (
-                <tr key={m.id || m.name} className={i === 0 ? "best-row" : ""}>
-                  <td><span className={`rank-badge rank-${i+1}`}>{m.rank || i+1}</span></td>
-                  <td>
-                    <strong>{m.name}</strong>
-                    {i === 0 && <span className="best-badge">★ Best</span>}
-                    <div className="muted small">{m.district}</div>
-                  </td>
-                  <td><strong>{fmt(m.price)}</strong></td>
-                  <td className="muted small">{fmtNum(m.min_price)} / {fmtNum(m.max_price)}</td>
-                  <td>{m.distance ? `${m.distance} km` : "—"}</td>
-                  <td><span className={`demand-pill demand-${(m.demand||"").toLowerCase()}`}>{m.demand || "—"}</span></td>
-                  <td>
-                    {m.trend > 0
-                      ? <span className="trend-up"><IconUp /> {m.trend}%</span>
-                      : <span className="trend-down"><IconDown /> {Math.abs(m.trend)}%</span>}
-                  </td>
-                  <td><strong className="net-value">{fmt(m.net_realization)}</strong></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ── Chart explorer ── */}
-      <section className="panel">
-        <h2 className="panel-title">📈 Market charts</h2>
-        <p className="chart-hint muted small">Switch between charts to understand pricing, volumes, and what you'll earn at each market.</p>
-
-        {/* Chart tabs */}
-        <div className="chart-tabs">
-          {CHART_TABS.map(ct => (
-            <button key={ct.id} className={`chart-tab-btn ${chartTab === ct.id ? "active" : ""}`}
-              onClick={() => setChartTab(ct.id)}>
-              {ct.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="chart-box">
-          {chartTab === "range" && (
-            <>
-              <h3 className="chart-title">📏 Price Range per Market</h3>
-              <p className="chart-desc muted small">The <strong>dot</strong> is today's modal price. Lines show minimum and maximum prices reported.</p>
-              <PriceRangeChart data={markets} />
-              <div className="chart-legend-row">
-                <span className="legend-dot" style={{ background: "#186b50" }} /> Best market
-                <span className="legend-line" /> Price range (min – max)
-              </div>
-            </>
-          )}
-          {chartTab === "earnings" && (
-            <>
-              <h3 className="chart-title">💰 Modal Price vs Money You'll Earn</h3>
-              <p className="chart-desc muted small">The darker bar shows your <strong>actual take-home amount</strong> after transport and storage. This is what matters most.</p>
-              <PriceVsNetChart data={markets} />
-            </>
-          )}
-          {chartTab === "arrivals" && (
-            <>
-              <h3 className="chart-title">🚜 Arrival Volume Share</h3>
-              <p className="chart-desc muted small">Bigger bubble = more produce arriving. <strong>High arrivals may push prices down</strong>. Consider markets with moderate arrivals for better pricing.</p>
-              <ArrivalBubbleChart data={markets} />
-            </>
-          )}
-          {chartTab === "net" && (
-            <>
-              <h3 className="chart-title">📊 Net Realization Ranking</h3>
-              <p className="chart-desc muted small">Your expected income after all costs. <strong>Longer bar = more money in your pocket.</strong></p>
-              <HBarChart data={markets} valueKey="net_realization" label="Net realization per market" />
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* ── Conditioned Forecast ── */}
-      <section className="panel">
-        <h2 className="panel-title"><IconCalendar /> 📅 Price forecast (next 7 days)</h2>
-        <p className="chart-desc muted small">
-          Select your crop and location below to get a price forecast tailored to your market.
-        </p>
-
-        {/* Filter grid: Commodity · State → District → Market · Variety · Grade */}
-        <div className="fc-filter-grid">
-          <label>
-            🌾 Commodity
-            <select value={fcCommodity} onChange={e => { setFcCommodity(e.target.value); setFcVariety(""); }}>
-              <option value="">— Any crop —</option>
-              {fcMeta.commodities.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </label>
-          <label>
-            📍 State
-            <select value={fcState} onChange={e => { setFcState(e.target.value); setFcDistrict(""); setFcMarket(""); }}>
-              <option value="">— Any state —</option>
-              {Object.keys(fcMeta.locations || {}).sort().map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </label>
-          <label>
-            🏘️ District
-            <select value={fcDistrict} onChange={e => { setFcDistrict(e.target.value); setFcMarket(""); }}
-                    disabled={!fcState}>
-              <option value="">— Any district —</option>
-              {fcStateDistricts.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </label>
-          <label>
-            🏪 Market
-            <select value={fcMarket} onChange={e => setFcMarket(e.target.value)} disabled={!fcDistrict}>
-              <option value="">— Any market —</option>
-              {fcDistrictMarkets.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </label>
-          <label>
-            🌿 Variety
-            <input type="text" value={fcVariety} placeholder="e.g. Hybrid, Desi…"
-                   onChange={e => setFcVariety(e.target.value)} />
-          </label>
-          <label>
-            🏷️ Grade
-            <select value={fcGrade} onChange={e => setFcGrade(e.target.value)}>
-              <option value="">— Any grade —</option>
-              {fcMeta.grades.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-          </label>
-        </div>
-
-        {/* Active filter tags */}
-        {(fcCommodity || fcState || fcDistrict || fcMarket || fcVariety || fcGrade) && (
-          <div className="filter-tags">
-            {fcCommodity && <span className="filter-tag" onClick={() => setFcCommodity("")}>🌾 {fcCommodity} ×</span>}
-            {fcGrade     && <span className="filter-tag" onClick={() => setFcGrade("")}>🏷️ {fcGrade} ×</span>}
-            {fcState     && <span className="filter-tag" onClick={() => { setFcState(""); setFcDistrict(""); setFcMarket(""); }}>📍 {fcState} ×</span>}
-            {fcDistrict  && <span className="filter-tag" onClick={() => { setFcDistrict(""); setFcMarket(""); }}>🏘️ {fcDistrict} ×</span>}
-            {fcMarket    && <span className="filter-tag" onClick={() => setFcMarket("")}>🏪 {fcMarket} ×</span>}
-            {fcVariety   && <span className="filter-tag" onClick={() => setFcVariety("")}>🌿 {fcVariety} ×</span>}
-          </div>
-        )}
-
-        {fcLoading && <p className="loading-text">Calculating forecast…</p>}
-
-        {!fcLoading && fcData && (
-          <>
-            {/* Confidence + data-source row */}
-            <div className="fc-meta-row">
-              <span>
-                Data source: <strong style={{ color: matchColors[fcData.match_level] || "#186b50" }}>
-                  {fcData.match_level?.replace("_", " ")}
-                </strong>
-                &nbsp;·&nbsp;{fcData.observations} records
-              </span>
-              <span className="fc-confidence">
-                Confidence&nbsp;
-                <span className="fc-conf-bg">
-                  <span className="fc-conf-fill"
-                        style={{
-                          width: `${fcData.confidence || 0}%`,
-                          background: (fcData.confidence || 0) >= 85 ? "#186b50"
-                                    : (fcData.confidence || 0) >= 75 ? "#c08000" : "#b04040"
-                        }} />
-                </span>
-                {fcData.confidence}%
-              </span>
-            </div>
-
-            {/* Advice banner */}
-            <div className={`notice ${noticeCls(fcData.trend_direction)}`} style={{ marginBottom: 14 }}>
-              {trendIcon(fcData.trend_direction)}&nbsp;
-              <strong>{fcData.advice}</strong>
-            </div>
-
-            {/* SVG line chart */}
-            <ForecastLineChart forecast={fcData} />
-
-            {/* Day tiles with min/modal/max */}
-            <div className="forecast-row">
-              {Array.from({ length: 7 }, (_, i) => i + 1).map(d => {
-                const b   = fcData.bounds?.[`${d}_day`] || {};
-                const val = Number(fcData.forecasts?.[`${d}_day`]) || b.modal || 0;
-                const prev = d === 1 ? val : Number(fcData.forecasts?.[`${d-1}_day`]) || val;
-                const up   = val >= prev;
-                // compute actual date for this day offset
-                const dt = new Date();
-                dt.setDate(dt.getDate() + d);
-                const dateLabel = `${String(dt.getDate()).padStart(2,"0")}/${String(dt.getMonth()+1).padStart(2,"0")}`;
-                const weekday   = dt.toLocaleString("en-IN", { weekday: "short" });
-                return (
-                  <div className="forecast-day" key={d}>
-                    <span className="fd-label">{dateLabel}</span>
-                    <span className="fd-weekday">{weekday}</span>
-                    <strong className="fd-val">{fmt(val)}</strong>
-                    {b.min && b.max && (
-                      <span className="fd-range">{fmtNum(b.min)} – {fmtNum(b.max)}</span>
-                    )}
-                    <span className={d === 1 ? "" : up ? "fd-up" : "fd-dn"}>
-                      {d > 1 ? (up ? "↑" : "↓") : ""}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Summary footer */}
-            <p className="fc-summary">
-              Forecast for:&nbsp;
-              {[fcCommodity, fcGrade, fcMarket || fcDistrict || fcState]
-                .filter(Boolean).join(" · ")}
-              &nbsp;·&nbsp;Match level: {fcData.match_level?.replace("_", " ")}
-              &nbsp;·&nbsp;Confidence: {fcData.confidence}%
-              &nbsp;·&nbsp;Trend: {fcData.trend_direction} ({fcData.trend_percent > 0 ? "+" : ""}{fcData.trend_percent?.toFixed(1)}%)
-            </p>
-          </>
-        )}
-
-        {!fcLoading && !fcData && (
-          <div className="fc-empty">
-            <span style={{ fontSize: 32 }}>🌾</span>
-            <p style={{ marginTop: 8 }}>
-              Select at least a <strong>Commodity</strong> or <strong>State</strong> above to generate a conditioned price forecast.
-            </p>
-          </div>
-        )}
-      </section>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   MY LOTS TAB
-═══════════════════════════════════════════════════════════════ */
-function MyLotsTab({ t, apiBase }) {
-  const [lots, setLots] = useState([]);
-  const [offers, setOffers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+export default function App() {
+  const [lang, setLang] = useState("en");
+  const [active, setActive] = useState(0); // 0: About (Home), 1: Selling Plan, 2: Markets, 3: Help
+  const [mobileNav, setMobileNav] = useState(false);
   const [toast, setToast] = useState("");
 
-  const [form, setForm] = useReducer((s, p) => ({ ...s, ...p }), {
-    commodity: "", quantity_kg: "5000", quality: "Grade A",
-    asking_price: "2800", origin: "", available_on: new Date().toISOString().slice(0, 10),
-  });
-
-  const loadLots   = useCallback(async () => {
-    try { const r = await fetch(`${apiBase}/lots/`);   if (r.ok) { const d = await r.json(); setLots(d.lots || []); } } catch {}
-  }, [apiBase]);
-  const loadOffers = useCallback(async () => {
-    try { const r = await fetch(`${apiBase}/offers/`); if (r.ok) { const d = await r.json(); setOffers(d.offers || []); } } catch {}
-  }, [apiBase]);
-
-  useEffect(() => { loadLots(); loadOffers(); }, [loadLots, loadOffers]);
-
-  const submitLot = async () => {
-    setLoading(true);
-    try {
-      const r = await fetch(`${apiBase}/lots/`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, quantity_kg: Number(form.quantity_kg), asking_price: Number(form.asking_price) }),
-      });
-      if (r.ok) { setToast(t.lotCreated); setShowForm(false); loadLots(); }
-    } catch {}
-    setLoading(false);
-  };
-
-  return (
-    <div className="tab-content">
-      <Toast msg={toast} onDone={() => setToast("")} />
-      <div className="panel-heading-row">
-        <h2 className="panel-title"><IconLot /> {t.myLots}</h2>
-        <button className="btn-secondary" onClick={() => setShowForm(s => !s)}>{showForm ? "✕ Cancel" : t.newLot}</button>
-      </div>
-
-      {showForm && (
-        <section className="panel form-panel">
-          <h3>List a new lot</h3>
-          <div className="wizard-grid">
-            <label className="field"><span>{t.lotCrop}</span>
-              <select value={form.commodity} onChange={e => setForm({ commodity: e.target.value })}>
-                <option value="">Select crop</option>{commodities.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </label>
-            <label className="field"><span>{t.lotQty} (kg)</span>
-              <input type="number" min="1" value={form.quantity_kg} onChange={e => setForm({ quantity_kg: e.target.value })} />
-            </label>
-            <label className="field"><span>Quality</span>
-              <select value={form.quality} onChange={e => setForm({ quality: e.target.value })}>
-                <option>Grade A</option><option>Grade B</option><option>Mixed quality</option>
-              </select>
-            </label>
-            <label className="field"><span>{t.lotPrice} (₹/qtl)</span>
-              <input type="number" min="1" value={form.asking_price} onChange={e => setForm({ asking_price: e.target.value })} />
-            </label>
-            <label className="field"><span>Village / Origin</span>
-              <input type="text" placeholder="e.g. Nashik" value={form.origin} onChange={e => setForm({ origin: e.target.value })} />
-            </label>
-            <label className="field"><span>Available from</span>
-              <input type="date" value={form.available_on} onChange={e => setForm({ available_on: e.target.value })} />
-            </label>
-          </div>
-          <button className="btn-primary" onClick={submitLot} disabled={loading || !form.commodity}>
-            {loading ? "Submitting…" : "List my lot"}
-          </button>
-        </section>
-      )}
-
-      <section className="panel">
-        {lots.length === 0
-          ? <p className="muted">{t.noLotsYet}</p>
-          : (
-            <div className="lot-list">
-              {lots.map(lot => (
-                <div className="lot-card" key={lot.id}>
-                  <div className="lot-header">
-                    <strong>{lot.commodity || "—"}</strong>
-                    <span className={`status-pill status-${(lot.status||"").toLowerCase()}`}>{lot.status}</span>
-                  </div>
-                  <div className="lot-meta">
-                    <span><IconLot /> {fmtNum(lot.quantity_kg)} kg</span>
-                    <span><IconRupee /> {fmt(lot.asking_price)}/qtl</span>
-                    {lot.origin && <span><IconPin /> {lot.origin}</span>}
-                  </div>
-                  <div className="lot-id muted small">ID: {lot.id}</div>
-                </div>
-              ))}
-            </div>
-          )}
-      </section>
-
-      <section className="panel">
-        <h2 className="panel-title">{t.offers}</h2>
-        {offers.length === 0
-          ? <p className="muted">{t.noOffersYet}</p>
-          : offers.map((offer, i) => (
-            <div className="offer-card" key={i}>
-              <div>
-                <strong>{fmt(offer.price)}/qtl</strong>
-                <span className="muted small"> · Lot {offer.lot}</span>
-              </div>
-              <div className="offer-actions">
-                <button className="btn-accept">{t.accept}</button>
-                <button className="btn-reject">{t.reject}</button>
-              </div>
-            </div>
-          ))}
-      </section>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   TRANSACTIONS TAB
-═══════════════════════════════════════════════════════════════ */
-function TransactionsTab({ t, apiBase }) {
-  const [txns, setTxns] = useState([]);
-  useEffect(() => {
-    fetch(`${apiBase}/transactions/`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.transactions) setTxns(d.transactions); })
-      .catch(() => {});
-  }, [apiBase]);
-
-  return (
-    <div className="tab-content">
-      <h2 className="panel-title"><IconReceipt /> {t.transactions}</h2>
-      <section className="panel">
-        {txns.length === 0
-          ? <p className="muted">{t.noTransactions}</p>
-          : (
-            <table className="market-table">
-              <thead><tr><th>ID</th><th>Lot</th><th>Amount</th><th>Delivery</th><th>Payment</th></tr></thead>
-              <tbody>
-                {txns.map((tx, i) => (
-                  <tr key={tx.id || i}>
-                    <td className="small muted">{tx.id || "—"}</td>
-                    <td>{tx.lot_id || "—"}</td>
-                    <td><strong>{fmt(tx.amount)}</strong></td>
-                    <td><span className={`status-pill status-${(tx.delivery_status||"").toLowerCase()}`}>{tx.delivery_status || "—"}</span></td>
-                    <td><span className={`status-pill status-${(tx.payment_status||"").toLowerCase()}`}>{tx.payment_status || "—"}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-      </section>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   HELP TAB
-═══════════════════════════════════════════════════════════════ */
-function HelpTab({ t, apiBase }) {
-  const [open, setOpen] = useState(null);
-  const [form, setForm] = useReducer((s, p) => ({ ...s, ...p }), { farmer_name: "", contact: "", description: "" });
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  const submit = async () => {
-    if (!form.description.trim()) return;
-    setSubmitting(true);
-    try {
-      const r = await fetch(`${apiBase}/grievances/`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (r.ok) setSuccess(true);
-    } catch {}
-    setSubmitting(false);
-  };
-
-  return (
-    <div className="tab-content">
-      <h2 className="panel-title"><IconHelp /> {t.faq}</h2>
-      <section className="panel">
-        {t.faqs.map((item, i) => (
-          <div className="faq-item" key={i}>
-            <button className="faq-q" onClick={() => setOpen(open === i ? null : i)}>
-              {item.q} <span>{open === i ? "▲" : "▼"}</span>
-            </button>
-            {open === i && <p className="faq-a">{item.a}</p>}
-          </div>
-        ))}
-      </section>
-
-      <section className="panel">
-        <h2 className="panel-title">{t.grievance}</h2>
-        {success ? (
-          <div className="notice success"><IconCheck /> {t.grievanceSuccess}</div>
-        ) : (
-          <>
-            <div className="wizard-grid">
-              <label className="field"><span>Your name</span>
-                <input type="text" placeholder="Ram Kumar" value={form.farmer_name} onChange={e => setForm({ farmer_name: e.target.value })} />
-              </label>
-              <label className="field"><span>Phone / Contact</span>
-                <input type="text" placeholder="9XXXXXXXXX" value={form.contact} onChange={e => setForm({ contact: e.target.value })} />
-              </label>
-            </div>
-            <label className="field full-width">
-              <span>{t.grievanceDesc}</span>
-              <textarea rows={4} placeholder="Describe your problem…" value={form.description} onChange={e => setForm({ description: e.target.value })} />
-            </label>
-            <button className="btn-primary" onClick={submit} disabled={submitting || !form.description.trim()}>
-              {submitting ? "Submitting…" : t.submit}
-            </button>
-          </>
-        )}
-      </section>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   ROOT APP
-═══════════════════════════════════════════════════════════════ */
-export default function App() {
-  const [lang, setLang]   = useState("en");
-  const [active, setActive] = useState(0);   // tab index
-  const [mobileNav, setMobileNav] = useState(false);
   const t = LANGS[lang] || LANGS.en;
 
-  /* Filters */
-  const [commodity, setCommodity] = useState("");
-  const [quantity,  setQuantity]  = useState("5000");
-  const [quality,   setQuality]   = useState("Grade A");
-  const [state,     setState]     = useState("");
-  const [district,  setDistrict]  = useState("");
-  const [variety,   setVariety]   = useState("");
+  /* ── Form inputs ── */
+  const [commodity, setCommodity] = useState("Tomato");
   const [commodityGroup, setCommodityGroup] = useState("");
-  const [transportRate,  setTransportRate]  = useState("38");
-  const [storageDays,    setStorageDays]    = useState("0");
-  const [storageRate,    setStorageRate]    = useState("4.5");
-  const [deliveryPref,   setDeliveryPref]   = useState("");
-  const [marketFilter,   setMarketFilter]   = useState("");
+  const [variety, setVariety] = useState("FAQ");
+  const [quantity, setQuantity] = useState("5000");
+  const [quality, setQuality] = useState("Grade B");
+  const [state, setState] = useState("Karnataka");
+  const [district, setDistrict] = useState("");
+  const [marketFilter, setMarketFilter] = useState("");
+  const [transportRate, setTransportRate] = useState("38");
+  const [storageDays, setStorageDays] = useState("0");
+  const [storageRate, setStorageRate] = useState("4.5");
+  const [deliveryPref, setDeliveryPref] = useState("Scheduled pickup");
 
-  /* Data */
-  const [markets,         setMarkets]         = useState(demoMarkets);
-  const [recommendation,  setRecommendation]  = useState(null);
+  /* ── Location metadata ── */
+  const locationsRes = useApi(`${API_BASE_URL}/locations/`, { locations: {} });
+  const locationMap = useMemo(() => locationsRes.data?.locations || {}, [locationsRes.data]);
+  const availableStates = useMemo(() => (Object.keys(locationMap).length ? Object.keys(locationMap).sort() : states), [locationMap]);
+  const availableDistricts = useMemo(() => locationMap[state] || [], [locationMap, state]);
+
+  /* ── State for markets & recommendations ── */
+  const [markets, setMarkets] = useState(demoMarkets);
+  const [recommendation, setRecommendation] = useState(null);
   const [decisionOptions, setDecisionOptions] = useState([]);
-  const [ranking,         setRanking]         = useState(null);
-  const [opportunities,   setOpportunities]   = useState([]);
-  const [forecast,        setForecast]        = useState(null);
-  const [forecastLoading, setForecastLoading] = useState(false);
-  const [dataError,       setDataError]       = useState("");
-  const [loading,         setLoading]         = useState(false);
-  const [toast,           setToast]           = useState("");
-  const [locations,       setLocations]       = useState({});
+  const [ranking, setRanking] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [dataError, setDataError] = useState("");
   const [isRecommendationPending, startTransition] = useTransition();
 
-  const deferredState    = useDeferredValue(state);
-  const deferredDistrict = useDeferredValue(district);
-  const deferredCommodity = useDeferredValue(commodity);
-  const deferredVariety   = useDeferredValue(variety);
-
-  const availableStates   = useMemo(() => Object.keys(locations).length ? Object.keys(locations) : states, [locations]);
-  const availableDistricts = useMemo(() =>
-    deferredState && locations[deferredState] ? locations[deferredState] : [], [deferredState, locations]);
-
-  /* Locations */
-  const locationsRes = useApi(`${API_BASE_URL}/locations/`, { locations: {} });
-  useEffect(() => { if (locationsRes.data?.locations) setLocations(locationsRes.data.locations); }, [locationsRes.data]);
-
-  /* Auto-load markets */
-  useEffect(() => {
+  /* ── Fetch initial market prices ── */
+  const [marketsLoaded, setMarketsLoaded] = useState(false);
+  const loadMarkets = useCallback(() => {
     const ac = new AbortController();
-    setDataError("");
     const params = new URLSearchParams();
-    if (deferredCommodity) params.set("commodity", deferredCommodity);
-    if (deferredState)     params.set("state", deferredState);
-    if (deferredDistrict)  params.set("district", deferredDistrict);
-    if (deferredVariety)   params.set("variety", deferredVariety);
-    if (marketFilter)      params.set("market", marketFilter);
-    if (commodityGroup)    params.set("commodity_group", commodityGroup);
+    if (state) params.set("state", state);
+    if (district) params.set("district", district);
+    if (commodity) params.set("commodity", commodity);
+    if (variety) params.set("variety", variety);
 
     fetch(`${API_BASE_URL}/markets/?${params}`, { signal: ac.signal })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.markets?.length) setMarkets(d.markets); else setDataError(t.noMarkets); })
-      .catch(e => { if (e.name !== "AbortError") setDataError(t.noMarkets); });
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
+      .then((d) => {
+        if (d.markets?.length) {
+          setMarkets(d.markets);
+          setDataError("");
+        }
+      })
+      .catch(() => {
+        setDataError("Showing offline sample data.");
+      })
+      .finally(() => setMarketsLoaded(true));
     return () => ac.abort();
-  }, [deferredCommodity, deferredState, deferredDistrict, deferredVariety, marketFilter, commodityGroup, t.noMarkets]);
+  }, [state, district, commodity, variety]);
 
-  /* Auto-load forecast */
-  useEffect(() => {
-    if (!markets.length) return;
-    const ac = new AbortController();
+  /* ── Fetch forecast for commodity ── */
+  const [forecast, setForecast] = useState(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const loadForecast = useCallback(() => {
+    if (!commodity) return;
     setForecastLoading(true);
-    fetch(`${API_BASE_URL}/forecasts/`, {
-      method: "POST", signal: ac.signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prices: markets.map(m => Number(m.price)).filter(Boolean) }),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setForecast(d); })
+    fetch(`${API_BASE_URL}/forecasts/?commodity=${encodeURIComponent(commodity)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.forecast) setForecast(d.forecast);
+      })
       .catch(() => {})
       .finally(() => setForecastLoading(false));
-    return () => ac.abort();
-  }, [markets]);
+  }, [commodity]);
 
-  /* Reset district when state changes */
-  useEffect(() => {
-    if (deferredDistrict && availableDistricts.length && !availableDistricts.includes(deferredDistrict))
-      setDistrict("");
-  }, [deferredDistrict, availableDistricts]);
-
-  /* Run recommendation */
+  /* ── Run AI recommendation calculation ── */
   const runRecommendation = useCallback(async () => {
     setLoading(true);
+    setDataError("");
+
+    const parsedQty = parseFloat(quantity);
+    const qtyVal = Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : 5000;
+
+    const parsedTransport = parseFloat(transportRate);
+    const transportVal = Number.isFinite(parsedTransport) && parsedTransport >= 0 ? parsedTransport : 38;
+
+    const parsedStorageDays = parseFloat(storageDays);
+    const storageDaysVal = Number.isFinite(parsedStorageDays) && parsedStorageDays >= 0 ? parsedStorageDays : 0;
+
+    const parsedStorageRate = parseFloat(storageRate);
+    const storageRateVal = Number.isFinite(parsedStorageRate) && parsedStorageRate >= 0 ? parsedStorageRate : 4.5;
+
     try {
       const r = await fetch(`${API_BASE_URL}/recommendations/`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          commodity, state, district, market: marketFilter, commodity_group: commodityGroup,
-          variety, quantity_kg: Number(quantity), quality,
-          transport_rate: Number(transportRate), storage_days: Number(storageDays), storage_rate: Number(storageRate),
+          commodity,
+          state,
+          district,
+          market: marketFilter,
+          commodity_group: commodityGroup,
+          variety,
+          quantity: qtyVal,
+          quantity_kg: qtyVal,
+          quality,
+          transport_rate: transportVal,
+          transport_rate_per_km: transportVal,
+          storage_days: storageDaysVal,
+          storage_rate: storageRateVal,
+          storage_rate_per_day: storageRateVal,
+          delivery_preference: deliveryPref,
         }),
       });
       if (r.ok) {
         const d = await r.json();
-        startTransition(() => { if (d.options?.length) setMarkets(d.options); });
-        if (d.recommendation)  setRecommendation(d.recommendation);
+        startTransition(() => {
+          if (d.options?.length) setMarkets(d.options);
+        });
+        if (d.recommendation) setRecommendation(d.recommendation);
         if (d.decision_options) setDecisionOptions(d.decision_options);
-        if (d.ranking)          setRanking(d.ranking);
+        if (d.ranking) setRanking(d.ranking);
         setToast("✅ Selling plan updated!");
-      } else throw new Error("failed");
+      } else {
+        throw new Error("failed");
+      }
     } catch {
-      setMarkets(demoMarkets);
+      const updatedDemo = demoMarkets.map((m) => {
+        const rev = (qtyVal / 100) * m.price;
+        const tCost = (qtyVal / 100) * m.distance * transportVal;
+        const sCost = qtyVal * storageDaysVal * storageRateVal;
+        const net = Math.round(rev - tCost - sCost);
+        return { ...m, net_realization: net, transport_cost: Math.round(tCost), storage_cost: Math.round(sCost) };
+      });
+      setMarkets(updatedDemo);
       setDataError("Live recommendations unavailable. Showing sample data.");
     } finally {
       setLoading(false);
     }
-  }, [commodity, state, district, marketFilter, commodityGroup, variety, quantity, quality, transportRate, storageDays, storageRate]);
+  }, [commodity, state, district, marketFilter, commodityGroup, variety, quantity, quality, transportRate, storageDays, storageRate, deliveryPref]);
 
+  /* ── Clean 4-Tab Navigation (My Lots and Transactions removed) ── */
   const TABS = [
-    { label: t.nav[0], icon: <IconHome /> },
-    { label: t.nav[1], icon: <IconSeed /> },
-    { label: t.nav[2], icon: <IconChart /> },
-    { label: t.nav[3], icon: <IconLot /> },
-    { label: t.nav[4], icon: <IconReceipt /> },
-    { label: t.nav[5], icon: <IconHelp /> },
+    { label: t.nav[0], icon: <IconHome /> },  // About / Home
+    { label: t.nav[1], icon: <IconSeed /> },  // Selling Plan
+    { label: t.nav[2], icon: <IconChart /> }, // Markets
+    { label: t.nav[3], icon: <IconHelp /> },  // Help
   ];
 
   const sharedProps = {
-    t, markets, recommendation, decisionOptions, ranking, forecast, forecastLoading,
-    quantity, setQuantity, quality, setQuality,
-    state, setState, district, setDistrict,
-    commodity, setCommodity, commodityGroup, setCommodityGroup,
-    variety, setVariety, transportRate, setTransportRate,
-    storageDays, setStorageDays, storageRate, setStorageRate,
-    deliveryPref, setDeliveryPref,
-    runRecommendation, loading, isRecommendationPending,
-    availableStates, availableDistricts, dataError, lang,
+    t,
+    markets,
+    recommendation,
+    decisionOptions,
+    ranking,
+    forecast,
+    forecastLoading,
+    quantity,
+    setQuantity,
+    quality,
+    setQuality,
+    state,
+    setState,
+    district,
+    setDistrict,
+    commodity,
+    setCommodity,
+    commodityGroup,
+    setCommodityGroup,
+    variety,
+    setVariety,
+    transportRate,
+    setTransportRate,
+    storageDays,
+    setStorageDays,
+    storageRate,
+    setStorageRate,
+    deliveryPref,
+    setDeliveryPref,
+    runRecommendation,
+    loading,
+    isRecommendationPending,
+    availableStates,
+    availableDistricts,
+    dataError,
+    lang,
   };
 
   return (
@@ -1521,8 +213,12 @@ export default function App() {
         </div>
 
         <div className="lang-switch">
-          {["en", "hi"].map(l => (
-            <button key={l} className={`lang-btn ${lang === l ? "active" : ""}`} onClick={() => setLang(l)}>
+          {["en", "hi"].map((l) => (
+            <button
+              key={l}
+              className={`lang-btn ${lang === l ? "active" : ""}`}
+              onClick={() => setLang(l)}
+            >
               {l === "en" ? "EN" : "हि"}
             </button>
           ))}
@@ -1533,7 +229,10 @@ export default function App() {
             <button
               key={i}
               className={`nav-item ${active === i ? "nav-active" : ""}`}
-              onClick={() => { setActive(i); setMobileNav(false); }}
+              onClick={() => {
+                setActive(i);
+                setMobileNav(false);
+              }}
             >
               {tab.icon} <span>{tab.label}</span>
             </button>
@@ -1549,13 +248,17 @@ export default function App() {
       <div className="main-wrap">
         {/* Mobile topbar */}
         <header className="topbar">
-          <button className="mobile-menu-btn" onClick={() => setMobileNav(s => !s)} aria-label="Menu">
+          <button className="mobile-menu-btn" onClick={() => setMobileNav((s) => !s)} aria-label="Menu">
             <IconMenu />
           </button>
           <span className="topbar-title">{t.appName}</span>
           <div className="topbar-right">
-            {["en", "hi"].map(l => (
-              <button key={l} className={`lang-btn-sm ${lang === l ? "active" : ""}`} onClick={() => setLang(l)}>
+            {["en", "hi"].map((l) => (
+              <button
+                key={l}
+                className={`lang-btn-sm ${lang === l ? "active" : ""}`}
+                onClick={() => setLang(l)}
+              >
                 {l === "en" ? "EN" : "हि"}
               </button>
             ))}
@@ -1568,20 +271,29 @@ export default function App() {
         {/* Bottom tab bar (mobile) */}
         <nav className="bottom-nav">
           {TABS.map((tab, i) => (
-            <button key={i} className={`bottom-nav-btn ${active === i ? "active" : ""}`} onClick={() => setActive(i)}>
-              {tab.icon}<span>{tab.label}</span>
+            <button
+              key={i}
+              className={`bottom-nav-btn ${active === i ? "active" : ""}`}
+              onClick={() => setActive(i)}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
             </button>
           ))}
         </nav>
 
-        {/* Tab content */}
+        {/* Tab content routing */}
         <main className="main-content">
-          {active === 0 && <AboutTab t={t} onGoToPlan={() => setActive(1)} onGoToMarkets={() => setActive(2)} />}
-          {active === 1 && <HomeTab {...sharedProps} />}
+          {active === 0 && (
+            <AboutTab
+              t={t}
+              onGoToPlan={() => setActive(1)}
+              onGoToMarkets={() => setActive(2)}
+            />
+          )}
+          {active === 1 && <SellingPlanTab {...sharedProps} />}
           {active === 2 && <MarketsTab {...sharedProps} />}
-          {active === 3 && <MyLotsTab t={t} apiBase={API_BASE_URL} />}
-          {active === 4 && <TransactionsTab t={t} apiBase={API_BASE_URL} />}
-          {active === 5 && <HelpTab t={t} apiBase={API_BASE_URL} />}
+          {active === 3 && <HelpTab t={t} apiBase={API_BASE_URL} />}
         </main>
       </div>
 

@@ -82,10 +82,45 @@ def recommendations(request):
             commodity_group=request.data.get("commodity_group"),
             variety=request.data.get("variety"),
         )
-        quantity_kg = float(request.data.get("quantity_kg", 5000))
-        transport_rate = float(request.data.get("transport_rate", 38))
-        storage_days = float(request.data.get("storage_days", 0))
-        storage_rate = float(request.data.get("storage_rate", 4.5))
+        # Support both naming conventions and avoid resetting valid 0 values
+        q_raw = request.data.get("quantity_kg")
+        if q_raw is None or str(q_raw).strip() == "":
+            q_raw = request.data.get("quantity")
+        try:
+            quantity_kg = float(q_raw) if q_raw is not None and str(q_raw).strip() != "" else 5000.0
+            if quantity_kg <= 0:
+                quantity_kg = 5000.0
+        except (ValueError, TypeError):
+            quantity_kg = 5000.0
+
+        tr_raw = request.data.get("transport_rate")
+        if tr_raw is None or str(tr_raw).strip() == "":
+            tr_raw = request.data.get("transport_rate_per_km")
+        try:
+            transport_rate = float(tr_raw) if tr_raw is not None and str(tr_raw).strip() != "" else 38.0
+            if transport_rate < 0:
+                transport_rate = 0.0
+        except (ValueError, TypeError):
+            transport_rate = 38.0
+
+        sd_raw = request.data.get("storage_days")
+        try:
+            storage_days = float(sd_raw) if sd_raw is not None and str(sd_raw).strip() != "" else 0.0
+            if storage_days < 0:
+                storage_days = 0.0
+        except (ValueError, TypeError):
+            storage_days = 0.0
+
+        sr_raw = request.data.get("storage_rate")
+        if sr_raw is None or str(sr_raw).strip() == "":
+            sr_raw = request.data.get("storage_rate_per_day")
+        try:
+            storage_rate = float(sr_raw) if sr_raw is not None and str(sr_raw).strip() != "" else 4.5
+            if storage_rate < 0:
+                storage_rate = 0.0
+        except (ValueError, TypeError):
+            storage_rate = 4.5
+
         result = calculate_recommendation(markets, quantity_kg, transport_rate, storage_days, storage_rate)
         return Response(result)
     except ValueError as exc:
