@@ -1,7 +1,7 @@
 import React from "react";
 
 export function AboutTab({ t, onGoToPlan, onGoToMarkets }) {
-  const isHi = t.appName !== "AgriMarket AI";
+  const isHi = t.appName === "एग्रीमार्केट";
 
   return (
     <div className="about-page">
