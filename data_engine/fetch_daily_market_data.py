@@ -77,6 +77,7 @@ def main() -> int:
     parser.add_argument("--commodity")
     parser.add_argument("--district")
     parser.add_argument("--state")
+    parser.add_argument("--max-records", type=int, default=5000)
     args = parser.parse_args()
 
     try:
@@ -84,6 +85,7 @@ def main() -> int:
             commodity=args.commodity,
             district=args.district,
             state=args.state,
+            max_records=args.max_records,
         )
         if not records:
             raise MarketDataError("The data.gov.in API returned no records.")

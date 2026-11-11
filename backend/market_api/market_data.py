@@ -341,8 +341,9 @@ def fetch_market_records(
     district: str | None = None,
     state: str | None = None,
     limit: int = 1000,
+    max_records: int = 5000,
 ) -> list[dict]:
-    """Fetch raw data.gov.in records for batch export."""
+    """Fetch raw data.gov.in records for batch export with pagination and safety limits."""
     api_key = os.getenv("MARKET_DATA_API_KEY")
     if not api_key:
         raise MarketDataError("MARKET_DATA_API_KEY is required for a live CSV export.")
@@ -373,15 +374,15 @@ def fetch_market_records(
         )
         last_error: Exception | None = None
         page_limit = limit
-        for attempt in range(5):
+        for attempt in range(3):
             try:
-                with urlopen(request, timeout=120) as response:
+                with urlopen(request, timeout=30) as response:
                     payload = json.load(response)
                 break
             except (HTTPError, OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
                 last_error = exc
-                if attempt < 4:
-                    time.sleep(min(30, 2**attempt))
+                if attempt < 2:
+                    time.sleep(min(10, 2**attempt))
                     if isinstance(exc, HTTPError) and exc.code in (429, 502, 503, 504):
                         page_limit = max(100, page_limit // 2)
                         params["limit"] = str(page_limit)
@@ -393,14 +394,20 @@ def fetch_market_records(
                             },
                         )
         else:
+            # If we already have some records fetched from earlier pages, use them instead of failing
+            if records:
+                LOGGER.warning("Encountered error on offset %d after fetching %d records: %s. Proceeding with fetched records.", offset, len(records), last_error)
+                return records
             raise MarketDataError(
-                f"Could not read the data.gov.in response after 5 attempts: {last_error}"
+                f"Could not read the data.gov.in response after 3 attempts: {last_error}"
             ) from last_error
 
         page = payload.get("records", [])
         if not isinstance(page, list):
+            if records:
+                return records
             raise MarketDataError("The data.gov.in response has an invalid records field.")
         records.extend(page)
-        if len(page) < page_limit:
-            return records
+        if len(page) < page_limit or (max_records and len(records) >= max_records):
+            return records[:max_records] if max_records else records
         offset += len(page)

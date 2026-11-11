@@ -42,7 +42,7 @@ jobs:
             echo "::error::MARKET_DATA_API_KEY secret is not set in GitHub repository secrets! Go to Settings -> Secrets and variables -> Actions to add it."
             exit 1
           fi
-          python data_engine/fetch_daily_market_data.py
+          python data_engine/fetch_daily_market_data.py --max-records 5000
 
       - name: Commit and Push Updated Dataset
         run: |
@@ -53,7 +53,7 @@ jobs:
             echo "No new market data found or dataset is unchanged. Skipping commit."
           else
             git commit -m "chore(data): auto-update mandi dataset (every 12h) [skip ci]"
-            git push
+            git push origin HEAD:${{ github.ref_name }}
             echo "Dataset successfully updated and pushed to GitHub."
           fi
 
