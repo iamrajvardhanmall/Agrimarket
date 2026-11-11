@@ -1,183 +1,356 @@
 import React from "react";
 
+const EN = {
+  badge: "India's Open Mandi Intelligence Platform",
+  h1a: "Sell at the Right Price.",
+  h1b: "Every Season.",
+  sub:
+    "AgriMarket AI gives every Indian farmer real-time mandi data, 7-day ML price forecasts, and transparent net-profit calculations — completely free, no login required.",
+  cta1: "Calculate My Selling Plan",
+  cta2: "Explore Mandi Prices",
+  stats: [
+    { val: "1,00,000+", label: "Mandi Records" },
+    { val: "7-Day", label: "ML Price Forecast" },
+    { val: "Free", label: "No Hidden Cost" },
+    { val: "EN + हिंदी", label: "Bilingual Support" },
+  ],
+  whyTitle: "The Problem We Solve",
+  whySub:
+    "Indian farmers lose an estimated ₹63,000 crore annually due to information asymmetry — not knowing which mandi will net the highest profit after real costs.",
+  problems: [
+    {
+      icon: "📉",
+      title: "Misleading Gross Prices",
+      body:
+        "A distant mandi offering ₹200/quintal more often costs more in diesel, loading & transit loss — farmers end up with less.",
+    },
+    {
+      icon: "📵",
+      title: "No Digital Access",
+      body:
+        "Most price-discovery tools require expensive smartphones, data plans, or logins that rural farmers simply don't have.",
+    },
+    {
+      icon: "⏱️",
+      title: "Stale Information",
+      body:
+        "Prices printed in newspapers or shared by middlemen are 1–2 days old — market conditions can shift overnight.",
+    },
+  ],
+  howTitle: "How It Works",
+  steps: [
+    {
+      n: "01",
+      icon: "🌾",
+      title: "Enter Your Details",
+      body: "Select crop, home district, harvest quantity and quality grade. No registration needed.",
+    },
+    {
+      n: "02",
+      icon: "🤖",
+      title: "AI Analyses Markets",
+      body:
+        "Our ML ensemble (Linear Regression + Decision Tree) scores every nearby mandi on predicted price, distance cost and storage rate.",
+    },
+    {
+      n: "03",
+      icon: "💰",
+      title: "Receive Net-Profit Advice",
+      body:
+        "Get ranked Sell Now, Store & Sell Later, and Alternate Market options showing exact rupees in pocket — not just market rate.",
+    },
+  ],
+  featTitle: "Platform Capabilities",
+  features: [
+    {
+      icon: "📊",
+      title: "Live Mandi Data",
+      body: "Sourced from AGMARKNET / data.gov.in — official government prices refreshed every 12 hours automatically.",
+    },
+    {
+      icon: "🔮",
+      title: "7-Day Price Forecasting",
+      body:
+        "Time-series regression trained on historical arrivals surfaces rising or falling trends so you pick the optimal sell window.",
+    },
+    {
+      icon: "🚚",
+      title: "True Net Realisation",
+      body:
+        "Deducts your exact transport (₹/qtl/km) and cold-storage (₹/kg/day) costs so comparisons are always apples-to-apples.",
+    },
+    {
+      icon: "🔍",
+      title: "6-Level Mandi Explorer",
+      body:
+        "Filter by commodity group → crop → variety → state → district → specific APMC market with instant results.",
+    },
+    {
+      icon: "⚡",
+      title: "Zero-Crash Reliability",
+      body:
+        "Built-in hierarchical CSV fallback means the app stays fully functional even during government API outages.",
+    },
+    {
+      icon: "🌐",
+      title: "Works Everywhere",
+      body:
+        "Lightweight Progressive Web App — opens instantly on any smartphone, feature phone browser or desktop with no install.",
+    },
+  ],
+  techTitle: "Built on Open Data",
+  techBody:
+    "AgriMarket AI is powered entirely by Open Government Data published under the NLOGI licence on data.gov.in (AGMARKNET dataset). No proprietary data, no subscriptions, no paywalls.",
+  techBadges: ["data.gov.in", "AGMARKNET", "scikit-learn ML", "Open Source"],
+  missionTitle: "Our Mission",
+  missionBody:
+    "Bridge the information gap between Indian farmers and mandi markets. Every rupee of information asymmetry we eliminate goes straight into a farmer's pocket.",
+  ctaTitle: "Ready to maximise your harvest income?",
+  ctaSub: "Takes 30 seconds. No account needed.",
+  ctaBtn: "Get My Free Selling Plan →",
+};
+
+const HI = {
+  badge: "भारत का ओपन मंडी इंटेलिजेंस प्लेटफॉर्म",
+  h1a: "सही दाम पर बेचें।",
+  h1b: "हर फसल में।",
+  sub:
+    "एग्रीमार्केट एआई हर भारतीय किसान को रियल-टाइम मंडी डेटा, 7-दिवसीय एमएल मूल्य पूर्वानुमान और पारदर्शी शुद्ध मुनाफा गणना देता है — बिल्कुल निशुल्क, बिना लॉगिन।",
+  cta1: "बिक्री योजना बनाएं",
+  cta2: "मंडी भाव देखें",
+  stats: [
+    { val: "10,000+", label: "मंडी रिकॉर्ड" },
+    { val: "7-दिन", label: "एमएल पूर्वानुमान" },
+    { val: "हमेशा निःशुल्क", label: "कोई छिपा खर्च नहीं" },
+    { val: "EN + हिंदी", label: "दोभाषी सहायता" },
+  ],
+  whyTitle: "समस्या जो हम हल करते हैं",
+  whySub:
+    "जानकारी की कमी के कारण भारतीय किसान हर साल अनुमानित ₹63,000 करोड़ गँवाते हैं — यह नहीं जान पाते कि वास्तविक खर्च के बाद कौन सी मंडी सबसे ज़्यादा मुनाफा देगी।",
+  problems: [
+    {
+      icon: "📉",
+      title: "भ्रामक सकल भाव",
+      body: "दूर की मंडी ₹200/क्विंटल ज़्यादा दिखती है, लेकिन डीजल और पारगमन हानि के बाद अक्सर नुकसान होता है।",
+    },
+    {
+      icon: "📵",
+      title: "डिजिटल पहुँच का अभाव",
+      body: "अधिकांश मूल्य-खोज उपकरणों के लिए महंगे स्मार्टफोन, डेटा प्लान या लॉगिन चाहिए।",
+    },
+    {
+      icon: "⏱️",
+      title: "पुरानी जानकारी",
+      body: "अखबार या दलालों के भाव 1–2 दिन पुराने होते हैं — बाज़ार रातोंरात बदल सकता है।",
+    },
+  ],
+  howTitle: "यह कैसे काम करता है",
+  steps: [
+    {
+      n: "01",
+      icon: "🌾",
+      title: "अपना विवरण दर्ज करें",
+      body: "फसल, गृह जिला, मात्रा और गुणवत्ता ग्रेड चुनें। कोई पंजीकरण नहीं।",
+    },
+    {
+      n: "02",
+      icon: "🤖",
+      title: "एआई बाजारों का विश्लेषण करता है",
+      body: "हमारा एमएल एन्सेम्बल पास की हर मंडी को अनुमानित भाव, दूरी और भंडारण दर पर स्कोर देता है।",
+    },
+    {
+      n: "03",
+      icon: "💰",
+      title: "शुद्ध मुनाफे की सलाह पाएं",
+      body: "अभी बेचें / बाद में बेचें / वैकल्पिक मंडी — सटीक रुपये जो आपकी जेब में आएंगे।",
+    },
+  ],
+  featTitle: "प्लेटफॉर्म क्षमताएं",
+  features: [
+    {
+      icon: "📊",
+      title: "लाइव मंडी डेटा",
+      body: "AGMARKNET / data.gov.in से — हर 12 घंटे में स्वचालित रूप से अपडेट।",
+    },
+    {
+      icon: "🔮",
+      title: "7-दिवसीय मूल्य पूर्वानुमान",
+      body: "ऐतिहासिक आवक पर प्रशिक्षित टाइम-सीरीज़ रिग्रेशन सर्वोत्तम बिक्री विंडो सुझाता है।",
+    },
+    {
+      icon: "🚚",
+      title: "वास्तविक शुद्ध प्राप्ति",
+      body: "सटीक परिवहन (₹/क्विंटल/किमी) और भंडारण (₹/किग्रा/दिन) खर्च घटाकर सही तुलना।",
+    },
+    {
+      icon: "🔍",
+      title: "6-स्तरीय मंडी एक्सप्लोरर",
+      body: "वस्तु समूह → फसल → किस्म → राज्य → जिला → विशिष्ट APMC मंडी — त्वरित परिणाम।",
+    },
+    {
+      icon: "⚡",
+      title: "ज़ीरो-क्रैश विश्वसनीयता",
+      body: "अंतर्निहित CSV फ़ॉलबैक — सरकारी API बंद रहने पर भी ऐप पूरी तरह काम करता है।",
+    },
+    {
+      icon: "🌐",
+      title: "हर जगह काम करता है",
+      body: "हल्का PWA — किसी भी स्मार्टफोन, फीचर फोन ब्राउज़र या डेस्कटॉप पर बिना इंस्टॉल खुलता है।",
+    },
+  ],
+  techTitle: "ओपन डेटा पर निर्मित",
+  techBody:
+    "एग्रीमार्केट एआई पूरी तरह data.gov.in पर NLOGI लाइसेंस के तहत प्रकाशित ओपन गवर्नमेंट डेटा (AGMARKNET) पर आधारित है। कोई मालिकाना डेटा नहीं, कोई सदस्यता नहीं।",
+  techBadges: ["data.gov.in", "AGMARKNET", "scikit-learn ML", "ओपन सोर्स"],
+  missionTitle: "हमारा संकल्प",
+  missionBody:
+    "भारतीय किसानों और मंडी बाजारों के बीच जानकारी की खाई को पाटना। जानकारी की असमानता का हर रुपया जो हम खत्म करते हैं, वह सीधे किसान की जेब में जाता है।",
+  ctaTitle: "फसल की आमदनी अधिकतम करने के लिए तैयार हैं?",
+  ctaSub: "30 सेकंड लगते हैं। कोई खाता नहीं चाहिए।",
+  ctaBtn: "मेरी निःशुल्क बिक्री योजना →",
+};
+
 export function AboutTab({ t, onGoToPlan, onGoToMarkets }) {
-  const isHi = t.appName === "एग्रीमार्केट";
+  const isHi = t.appName !== "AgriMarket AI";
+  const c = isHi ? HI : EN;
+
   return (
-    <div className="tab-content about-page">
-      {/* ── Hero ── */}
-      <div className="hero-card about-hero">
-        <div className="hero-badge">🌱 {isHi ? "किसान-प्रथम कृषि निर्णय मंच" : "Farmer-First Decision Platform"}</div>
-        <h1 className="hero-title" style={{ fontSize: "28px", lineHeight: "1.3" }}>
-          {isHi ? "स्मार्ट बेचें। ज़्यादा कमाएं।" : "Sell Smarter. Earn More."}
-        </h1>
-        <p style={{ opacity: 0.9, fontSize: "16px", maxWidth: "680px", marginBottom: "20px", lineHeight: "1.6" }}>
-          {isHi
-            ? "एग्रीमार्केट एआई किसानों को देश भर की मंडियों के सटीक भाव, 7-दिवसीय एआई मूल्य पूर्वानुमान और परिवहन-भंडारण खर्च घटाकर आपका शुद्ध वास्तविक मुनाफा बताता है।"
-            : "AgriMarket AI helps farmers make confident selling decisions by analyzing real-time mandi prices, projecting 7-day ML price forecasts, and calculating true net profits after transport and storage costs."}
-        </p>
+    <div className="about-page">
 
-        <div className="hero-actions" style={{ gap: "12px", marginTop: "10px" }}>
-          <button className="btn-primary" onClick={onGoToPlan} style={{ fontSize: "15px", padding: "14px 24px" }}>
-            🌾 {isHi ? "अपनी बिक्री योजना बनाएं" : "Calculate Selling Plan"} →
-          </button>
-          <button
-            className="btn-secondary"
-            onClick={onGoToMarkets}
-            style={{ background: "rgba(255,255,255,0.18)", color: "#fff", borderColor: "rgba(255,255,255,0.4)" }}
-          >
-            📊 {isHi ? "मंडी भाव देखें" : "Explore Mandi Prices"}
-          </button>
+      {/* ══ HERO ══════════════════════════════════════════════════ */}
+      <section className="about-hero">
+        <div className="about-hero-inner">
+          <div className="about-hero-badge">
+            <span className="badge-dot" />
+            {c.badge}
+          </div>
+
+          <h1 className="about-hero-h1">
+            <span className="h1-line1">{c.h1a}</span>
+            <span className="h1-line2">{c.h1b}</span>
+          </h1>
+
+          <p className="about-hero-sub">{c.sub}</p>
+
+          <div className="about-hero-actions">
+            <button className="about-btn-primary" onClick={onGoToPlan}>
+              🌾 {c.cta1}
+            </button>
+            <button className="about-btn-ghost" onClick={onGoToMarkets}>
+              📊 {c.cta2}
+            </button>
+          </div>
+
+          {/* Stats strip */}
+          <div className="about-stats-bar">
+            {c.stats.map((s) => (
+              <div key={s.label} className="about-stat-block">
+                <strong>{s.val}</strong>
+                <span>{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ WHY / PROBLEM ════════════════════════════════════════ */}
+      <section className="about-section">
+        <div className="about-section-header">
+          <div className="section-label">The Challenge</div>
+          <h2 className="section-title">{c.whyTitle}</h2>
+          <p className="section-sub">{c.whySub}</p>
         </div>
 
-        {/* Quick Highlights bar */}
-        <div className="about-stats-strip">
-          <div className="stat-pill">
-            <strong>10,000+</strong>
-            <span>{isHi ? "मंडी रिकॉर्ड" : "Mandi Records"}</span>
-          </div>
-          <div className="stat-pill">
-            <strong>7-Day</strong>
-            <span>{isHi ? "एमएल पूर्वानुमान" : "ML Forecasts"}</span>
-          </div>
-          <div className="stat-pill">
-            <strong>₹0 / Free</strong>
-            <span>{isHi ? "बिना लॉगिन तुरंत" : "No Login Needed"}</span>
-          </div>
-          <div className="stat-pill">
-            <strong>EN + हिंदी</strong>
-            <span>{isHi ? "दोभाषी सहायता" : "Bilingual"}</span>
-          </div>
+        <div className="about-problem-grid">
+          {c.problems.map((p) => (
+            <div key={p.title} className="problem-card">
+              <div className="problem-icon">{p.icon}</div>
+              <h3>{p.title}</h3>
+              <p>{p.body}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* ── The Problem & The Solution ── */}
-      <div className="card">
-        <h2 className="card-title" style={{ marginBottom: "16px" }}>
-          💡 {isHi ? "एग्रीमार्केट एआई क्यों आवश्यक है?" : "Why AgriMarket AI?"}
-        </h2>
-        <div className="about-compare-grid">
-          <div className="compare-card bad">
-            <div className="compare-tag bad-tag">❌ {isHi ? "पारंपरिक तरीका" : "The Traditional Struggle"}</div>
-            <h4>{isHi ? "अधूरे भावों पर निर्णय" : "Misleading Gross Prices"}</h4>
-            <p>
-              {isHi
-                ? "दूर की मंडी में ₹200 ज़्यादा दिखते हैं, लेकिन डीजल, लोडिंग और समय के नुकसान के बाद अक्सर किसान घाटे में रहता है।"
-                : "A mandi 60 km away may advertise ₹200/quintal more, but after paying high transport and transit losses, take-home profit is often lower."}
-            </p>
-          </div>
-          <div className="compare-card good">
-            <div className="compare-tag good-tag">✅ {isHi ? "एग्रीमार्केट का समाधान" : "The AgriMarket Advantage"}</div>
-            <h4>{isHi ? "शुद्ध वास्तविक मुनाफा" : "True Net Realization"}</h4>
-            <p>
-              {isHi
-                ? "हम आपके वास्तविक परिवहन (₹/क्विंटल/किमी) और भंडारण खर्च को घटाकर बताते हैं कि आज कहाँ बेचना सबसे अधिक लाभदायक है।"
-                : "We subtract actual transit distance costs and storage holding rates to rank mandis by net profit in your pocket, with 'Sell Now vs. Store' advice."}
-            </p>
-          </div>
+      {/* ══ HOW IT WORKS ════════════════════════════════════════= */}
+      <section className="about-section about-section-alt">
+        <div className="about-section-header">
+          <div className="section-label">Process</div>
+          <h2 className="section-title">{c.howTitle}</h2>
         </div>
-      </div>
 
-      {/* ── 3-Step Journey ── */}
-      <div className="card">
-        <h2 className="card-title" style={{ marginBottom: "20px" }}>
-          🚜 {isHi ? "यह कैसे काम करता है? (3 आसान चरण)" : "How It Works (3 Simple Steps)"}
-        </h2>
-        <div className="about-steps-grid">
-          <div className="about-step-item">
-            <div className="step-num">1</div>
-            <div className="step-icon">🌾</div>
-            <h3>{isHi ? "अपनी फसल चुनें" : "Select Produce"}</h3>
-            <p>
-              {isHi
-                ? "अपनी फसल (टमाटर, प्याज, गेहूं आदि), राज्य, जिला और फसल की मात्रा दर्ज करें।"
-                : "Choose your crop, your home district, and total harvest quantity."}
-            </p>
-          </div>
-          <div className="about-step-item">
-            <div className="step-num">2</div>
-            <div className="step-icon">🤖</div>
-            <h3>{isHi ? "एआई तुलना करता है" : "AI Analyzes Costs"}</h3>
-            <p>
-              {isHi
-                ? "मशीन लर्निंग मॉडल आसपास की मंडियों, दूरी और भंडारण खर्च का सटीक आकलन करता है।"
-                : "Our ML engine compares nearby mandis, transit kilometers, and holding costs."}
-            </p>
-          </div>
-          <div className="about-step-item">
-            <div className="step-num">3</div>
-            <div className="step-icon">💰</div>
-            <h3>{isHi ? "अधिकतम लाभ कमाएं" : "Maximize Earnings"}</h3>
-            <p>
-              {isHi
-                ? "सर्वश्रेष्ठ मंडी की अनुशंसा और 7-दिवसीय मूल्य रुझान के साथ सही समय पर बेचें।"
-                : "Receive rank-ordered recommendations with expected take-home income and confidence."}
-            </p>
-          </div>
+        <div className="about-steps">
+          {c.steps.map((s, i) => (
+            <div key={s.n} className="about-step">
+              <div className="step-connector">
+                <div className="step-circle">{s.n}</div>
+                {i < c.steps.length - 1 && <div className="step-line" />}
+              </div>
+              <div className="step-body">
+                <div className="step-emoji">{s.icon}</div>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* ── Feature Highlights ── */}
-      <div className="about-features-grid">
-        <div className="feature-card">
-          <div className="feature-icon">📈</div>
-          <h3>{isHi ? "7-दिवसीय मूल्य पूर्वानुमान" : "7-Day ML Price Forecasting"}</h3>
-          <p>
-            {isHi
-              ? "ऐतिहासिक मंडी आवक पर प्रशिक्षित लीनियर रिग्रेशन और डिसीजन ट्री मॉडल अगले सप्ताह के भाव का पूर्वानुमान लगाते हैं।"
-              : "Time-series regression models trained on multi-year mandi records project expected modal price movements."}
-          </p>
+      {/* ══ FEATURES ══════════════════════════════════════════════ */}
+      <section className="about-section">
+        <div className="about-section-header">
+          <div className="section-label">Capabilities</div>
+          <h2 className="section-title">{c.featTitle}</h2>
         </div>
-        <div className="feature-card">
-          <div className="feature-icon">🚚</div>
-          <h3>{isHi ? "सटीक परिवहन लागत" : "Custom Transport Economics"}</h3>
-          <p>
-            {isHi
-              ? "प्रति क्विंटल प्रति किलोमीटर परिवहन खर्च को जोड़कर वास्तविक मुनाफा निकालें।"
-              : "Configure your local ₹/qtl/km transit and ₹/kg/day storage rates for pinpoint net profitability."}
-          </p>
-        </div>
-        <div className="feature-card">
-          <div className="feature-icon">🔍</div>
-          <h3>{isHi ? "6-स्तरीय विस्तृत मंडी फ़िल्टर" : "6-Level Cascading Mandi Explorer"}</h3>
-          <p>
-            {isHi
-              ? "फसल वर्ग, वस्तु, किस्म, राज्य, जिला और मंडी के आधार पर तुरंत सटीक भाव और आवक मात्रा देखें।"
-              : "Explore mandi prices by commodity group, crop, variety, state, district, and specific APMC market."}
-          </p>
-        </div>
-        <div className="feature-card">
-          <div className="feature-icon">🛡️</div>
-          <h3>{isHi ? "ऑफलाइन सुरक्षित तकनीक" : "Zero-Crash Reliability"}</h3>
-          <p>
-            {isHi
-              ? "सरकारी सर्वर धीमे होने पर भी अंतर्निहित डेटासेट से निरंतर और त्वरित सेवाएं।"
-              : "Built with graceful hierarchical CSV fallbacks so the app never crashes even during upstream API outages."}
-          </p>
-        </div>
-      </div>
 
-      {/* ── Mission & Open Data Notice ── */}
-      <div className="card" style={{ background: "linear-gradient(135deg, #10523f 0%, #186b50 100%)", color: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap", justifyContent: "space-between" }}>
-          <div>
-            <span style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", opacity: 0.8 }}>
-              {isHi ? "हमारा संकल्प" : "Our Mission"}
-            </span>
-            <h3 style={{ fontSize: "20px", marginTop: "4px", marginBottom: "8px" }}>
-              {isHi ? "भारतीय किसानों के लिए पारदर्शी और सुलभ तकनीक" : "Bridging Information Asymmetry for Every Indian Farmer"}
-            </h3>
-            <p style={{ opacity: 0.85, fontSize: "14px", maxWidth: "600px", lineHeight: "1.5" }}>
-              {isHi
-                ? "ओपन गवर्नमेंट डेटा (data.gov.in / AGMARKNET) के आधिकारिक मंडी आंकड़ों पर आधारित। 100% निशुल्क और सभी किसानों के लिए सहज।"
-                : "Powered by authentic Open Government Data (data.gov.in / AGMARKNET). Completely free, open to all, with no passwords or account barriers."}
-            </p>
-          </div>
-          <button className="btn-primary" onClick={onGoToPlan} style={{ minWidth: "180px", justifyContent: "center" }}>
-            🌾 {isHi ? "शुरू करें →" : "Get Started →"}
-          </button>
+        <div className="about-feat-grid">
+          {c.features.map((f) => (
+            <div key={f.title} className="about-feat-card">
+              <div className="feat-icon-wrap">{f.icon}</div>
+              <h3>{f.title}</h3>
+              <p>{f.body}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
+
+      {/* ══ OPEN DATA TRUST STRIP ════════════════════════════════ */}
+      <section className="about-trust-strip">
+        <div className="trust-left">
+          <div className="section-label light">{c.techTitle}</div>
+          <p className="trust-body">{c.techBody}</p>
+          <div className="trust-badges">
+            {c.techBadges.map((b) => (
+              <span key={b} className="trust-badge">{b}</span>
+            ))}
+          </div>
+        </div>
+        <div className="trust-right">
+          <div className="mission-pill">
+            <div className="mission-icon">🎯</div>
+            <div>
+              <strong>{c.missionTitle}</strong>
+              <p>{c.missionBody}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ FINAL CTA ════════════════════════════════════════════ */}
+      <section className="about-cta-section">
+        <h2>{c.ctaTitle}</h2>
+        <p>{c.ctaSub}</p>
+        <button className="about-btn-primary large" onClick={onGoToPlan}>
+          {c.ctaBtn}
+        </button>
+        <div className="cta-trust-row">
+          <span>🔒 No login</span>
+          <span>📵 Works offline</span>
+          <span>🇮🇳 Made for India</span>
+          <span>✅ 100% Free</span>
+        </div>
+      </section>
+
     </div>
   );
 }
-
