@@ -13,7 +13,17 @@ import { API_BASE_URL } from "../../constants/config";
 
 export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dataError }) {
   const [chartTab, setChartTab] = useState("range");
-  const best = markets[0] || demoMarkets[0];
+
+  /* ── Market-table filter state ── */
+  const [mktCommodity, setMktCommodity] = useState("");
+  const [mktState,     setMktState]     = useState("");
+  const [mktDistrict,  setMktDistrict]  = useState("");
+  const [mktMarket,    setMktMarket]    = useState("");
+  const [mktVariety,   setMktVariety]   = useState("");
+  const [mktGrade,     setMktGrade]     = useState("");
+  const [mktLoading,   setMktLoading]   = useState(false);
+  const [mktData,      setMktData]      = useState(null);
+
   const CHART_TABS = [
     { id: "range",    label: "📏 Price Range" },
     { id: "earnings", label: "💰 Earnings Compare" },
@@ -58,8 +68,32 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
       .finally(() => setFcLoading(false));
   }, [fcState, fcDistrict, fcMarket, fcCommodity, fcVariety, fcGrade]);
 
+  /* Fetch filtered markets whenever any market filter changes */
+  useEffect(() => {
+    if (!mktCommodity && !mktState && !mktDistrict && !mktMarket) {
+      setMktData(null);
+      return;
+    }
+    const params = new URLSearchParams();
+    if (mktState)     params.set("state",     mktState);
+    if (mktDistrict)  params.set("district",  mktDistrict);
+    if (mktMarket)    params.set("market",    mktMarket);
+    if (mktCommodity) params.set("commodity", mktCommodity);
+    if (mktVariety)   params.set("variety",   mktVariety);
+    if (mktGrade)     params.set("grade",     mktGrade);
+    setMktLoading(true);
+    fetch(`${API_BASE_URL}/markets/?${params}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.markets?.length) setMktData(d.markets); })
+      .catch(() => {})
+      .finally(() => setMktLoading(false));
+  }, [mktState, mktDistrict, mktMarket, mktCommodity, mktVariety, mktGrade]);
+
   /* Helpers */
-  const fcStateDistricts  = fcMeta.locations?.[fcState]        || [];
+  const displayMarkets        = mktData || markets;
+  const fcStateDistricts      = fcMeta.locations?.[fcState]              || [];
+  const mktStateDistricts     = fcMeta.locations?.[mktState]             || [];
+  const mktDistrictMarkets    = fcMeta.markets_by_district?.[mktDistrict] || [];
   const fcDistrictMarkets = fcMeta.markets_by_district?.[fcDistrict] || [];
   const matchColors = {
     exact: "#186b50",
@@ -74,6 +108,8 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
   const noticeCls = (d) =>
     d === "rising" ? "success" : d === "falling" ? "warn" : "info";
 
+  const best = displayMarkets[0] || demoMarkets[0];
+
   return (
     <div className="tab-content">
       <div className="panel-heading-row">
@@ -83,6 +119,74 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
         )}
       </div>
       {dataError && <div className="notice warn"><IconWarn /> {dataError}</div>}
+
+      {/* ── Market Filters ── */}
+      <section className="panel">
+        <h2 className="panel-title">🔍 Filter Markets</h2>
+        <div className="fc-filter-grid">
+          <label>
+            🌾 Commodity
+            <select value={mktCommodity} onChange={(e) => { setMktCommodity(e.target.value); setMktData(null); }}>
+              <option value="">— Any crop —</option>
+              {fcMeta.commodities.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <label>
+            📍 State
+            <select value={mktState} onChange={(e) => { setMktState(e.target.value); setMktDistrict(""); setMktMarket(""); setMktData(null); }}>
+              <option value="">— Any state —</option>
+              {Object.keys(fcMeta.locations || {}).sort().map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <label>
+            🏘️ District
+            <select
+              value={mktDistrict}
+              onChange={(e) => { setMktDistrict(e.target.value); setMktMarket(""); setMktData(null); }}
+              disabled={!mktState}
+            >
+              <option value="">— Any district —</option>
+              {mktStateDistricts.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </label>
+          <label>
+            🏪 Market
+            <select value={mktMarket} onChange={(e) => { setMktMarket(e.target.value); setMktData(null); }} disabled={!mktDistrict}>
+              <option value="">— Any market —</option>
+              {mktDistrictMarkets.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+          <label>
+            🌿 Variety
+            <input
+              type="text"
+              value={mktVariety}
+              placeholder="e.g. Hybrid, Desi…"
+              onChange={(e) => { setMktVariety(e.target.value); setMktData(null); }}
+            />
+          </label>
+          <label>
+            🏷️ Grade
+            <select value={mktGrade} onChange={(e) => { setMktGrade(e.target.value); setMktData(null); }}>
+              <option value="">— Any grade —</option>
+              {fcMeta.grades.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {/* Active filter tags */}
+        {(mktCommodity || mktState || mktDistrict || mktMarket || mktVariety || mktGrade) && (
+          <div className="filter-tags">
+            {mktCommodity && <span className="filter-tag" onClick={() => { setMktCommodity(""); setMktData(null); }}>🌾 {mktCommodity} ×</span>}
+            {mktGrade     && <span className="filter-tag" onClick={() => { setMktGrade(""); setMktData(null); }}>🏷️ {mktGrade} ×</span>}
+            {mktState     && <span className="filter-tag" onClick={() => { setMktState(""); setMktDistrict(""); setMktMarket(""); setMktData(null); }}>📍 {mktState} ×</span>}
+            {mktDistrict  && <span className="filter-tag" onClick={() => { setMktDistrict(""); setMktMarket(""); setMktData(null); }}>🏘️ {mktDistrict} ×</span>}
+            {mktMarket    && <span className="filter-tag" onClick={() => { setMktMarket(""); setMktData(null); }}>🏪 {mktMarket} ×</span>}
+            {mktVariety   && <span className="filter-tag" onClick={() => { setMktVariety(""); setMktData(null); }}>🌿 {mktVariety} ×</span>}
+          </div>
+        )}
+        {mktLoading && <p className="loading-text">Loading markets…</p>}
+      </section>
 
       {/* Markets table */}
       <section className="panel">
@@ -101,7 +205,7 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
               </tr>
             </thead>
             <tbody>
-              {markets.map((m, i) => (
+              {displayMarkets.map((m, i) => (
                 <tr key={m.id || m.name} className={i === 0 ? "best-row" : ""}>
                   <td><span className={`rank-badge rank-${i + 1}`}>{m.rank || i + 1}</span></td>
                   <td>
@@ -153,7 +257,7 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
               <p className="chart-desc muted small">
                 The <strong>dot</strong> is today's modal price. Lines show minimum and maximum prices reported.
               </p>
-              <PriceRangeChart data={markets} />
+              <PriceRangeChart data={displayMarkets} />
               <div className="chart-legend-row">
                 <span className="legend-dot" style={{ background: "#186b50" }} /> Best market
                 <span className="legend-line" /> Price range (min – max)
@@ -166,7 +270,7 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
               <p className="chart-desc muted small">
                 The darker bar shows your <strong>actual take-home amount</strong> after transport and storage. This is what matters most.
               </p>
-              <PriceVsNetChart data={markets} />
+              <PriceVsNetChart data={displayMarkets} />
             </>
           )}
           {chartTab === "arrivals" && (
@@ -175,7 +279,7 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
               <p className="chart-desc muted small">
                 Bigger bubble = more produce arriving. <strong>High arrivals may push prices down</strong>. Consider markets with moderate arrivals for better pricing.
               </p>
-              <ArrivalBubbleChart data={markets} />
+              <ArrivalBubbleChart data={displayMarkets} />
             </>
           )}
           {chartTab === "net" && (
@@ -184,7 +288,7 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
               <p className="chart-desc muted small">
                 Your expected income after all costs. <strong>Longer bar = more money in your pocket.</strong>
               </p>
-              <HBarChart data={markets} valueKey="net_realization" label="Net realization per market" />
+              <HBarChart data={displayMarkets} valueKey="net_realization" label="Net realization per market" />
             </>
           )}
         </div>
