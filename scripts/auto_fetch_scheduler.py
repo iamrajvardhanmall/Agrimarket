@@ -1,12 +1,3 @@
-"""Automated 12-hour scheduler for AgriMarket mandi dataset update & git push.
-
-Can be run locally:
-    python scripts/auto_fetch_scheduler.py
-Options:
-    --interval-hours 12   (default: 12)
-    --once                (run once immediately and exit)
-"""
-
 from __future__ import annotations
 
 import argparse

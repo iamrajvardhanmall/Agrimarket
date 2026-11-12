@@ -98,7 +98,7 @@ def main() -> int:
         # In CI (GitHub Actions), if government server times out or geo-blocks foreign runners, don't break the build
         if os.getenv("CI") == "true" or os.getenv("GITHUB_ACTIONS") == "true":
             print(
-                "::warning title=data.gov.in API Notice::data.gov.in was unreachable or rate-limited from the cloud runner. Preserving current dataset without failing workflow."
+                f"::warning title=data.gov.in API Notice::data.gov.in API call failed: {exc}. Foreign cloud runners (Azure/GitHub) are blocked by Indian NIC WAF. Dataset preserved without failing CI."
             )
             return 0
         return 1
