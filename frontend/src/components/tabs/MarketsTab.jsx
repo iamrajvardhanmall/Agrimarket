@@ -253,40 +253,48 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
         <div className="chart-box">
           {chartTab === "range" && (
             <>
-              <h3 className="chart-title">📏 Price Range per Market</h3>
+              <h3 className="chart-title">📏 Price Range — Compare Markets at a Glance</h3>
               <p className="chart-desc muted small">
-                The <strong>dot</strong> is today's modal price. Lines show minimum and maximum prices reported.
+                The <strong>filled dot</strong> is today's modal price. The <strong>green bar</strong> shows what you'll actually earn (net).
+                The dashed line is the best market's price — your benchmark. <strong>+% / −%</strong> shows how much you gain or lose vs that benchmark.
               </p>
               <PriceRangeChart data={displayMarkets} />
               <div className="chart-legend-row">
-                <span className="legend-dot" style={{ background: "#186b50" }} /> Best market
-                <span className="legend-line" /> Price range (min – max)
+                <span className="legend-dot" style={{ background: "#186b50" }} /> Modal price (dot)
+                &nbsp;·&nbsp;
+                <span style={{ display:"inline-block", width:10, height:10, background:"#27ae60", borderRadius:2, verticalAlign:"middle" }} /> Net you earn
+                &nbsp;·&nbsp;
+                <span style={{ display:"inline-block", width:28, borderTop:"2px dashed #186b50", verticalAlign:"middle" }} /> Best market benchmark
               </div>
             </>
           )}
           {chartTab === "earnings" && (
             <>
-              <h3 className="chart-title">💰 Modal Price vs Money You'll Earn</h3>
+              <h3 className="chart-title">💰 Modal Price vs What You'll Actually Earn</h3>
               <p className="chart-desc muted small">
-                The darker bar shows your <strong>actual take-home amount</strong> after transport and storage. This is what matters most.
+                Light bar = market's modal price. Dark bar = your <strong>take-home after transport &amp; storage</strong>.
+                The badge above each pair shows the <strong>profit delta</strong> — how much more (or less) you earn vs the modal price.
               </p>
               <PriceVsNetChart data={displayMarkets} />
             </>
           )}
           {chartTab === "arrivals" && (
             <>
-              <h3 className="chart-title">🚜 Arrival Volume Share</h3>
+              <h3 className="chart-title">🚜 Supply Volume vs Modal Price — Spot Oversupply Risk</h3>
               <p className="chart-desc muted small">
-                Bigger bubble = more produce arriving. <strong>High arrivals may push prices down</strong>. Consider markets with moderate arrivals for better pricing.
+                Each bubble's <strong>size = quantity arriving</strong> at that market. The price inside is today's modal.
+                <strong> Big bubble + low price</strong> = oversupply, avoid selling there. <strong>Small bubble + high price</strong> = scarcity premium, ideal to sell.
               </p>
               <ArrivalBubbleChart data={displayMarkets} />
             </>
           )}
           {chartTab === "net" && (
             <>
-              <h3 className="chart-title">📊 Net Realization Ranking</h3>
+              <h3 className="chart-title">📊 Net Profit Ranking — Best Market Highlighted</h3>
               <p className="chart-desc muted small">
-                Your expected income after all costs. <strong>Longer bar = more money in your pocket.</strong>
+                Bars show your <strong>net realization</strong> (take-home after all costs) per market.
+                The dashed line marks the <strong>best market's modal price</strong> as a reference.
+                The <strong>% column</strong> on the right shows how much each market lags behind the best.
               </p>
               <HBarChart data={displayMarkets} valueKey="net_realization" label="Net realization per market" />
             </>
