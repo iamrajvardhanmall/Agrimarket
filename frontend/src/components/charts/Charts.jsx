@@ -2,380 +2,517 @@ import { fmt, fmtNum } from "../../utils/formatters";
 
 /* ─── shared helpers ─── */
 const shortName = (s) =>
-  (s || "").replace(/ APMC/gi, "").replace(/ Market/gi, "").replace(/ Mandi/gi, "");
+  (s || "").replace(/ APMC/gi, "").replace(/ Market/gi, "").replace(/ Mandi/gi, "").trim();
 
-const BEST_COLOR  = "#186b50";
-const OTHER_COLOR = "#6cb290";
-const COST_COLOR  = "#c0392b";
-const PROFIT_COLOR = "#27ae60";
+const G     = "#186b50";   // brand green (best)
+const GL    = "#6cb290";   // lighter green
+const RED   = "#c0392b";   // loss / warning
+const GOLD  = "#b8860b";   // medium
+const EARN  = "#1a8f65";   // "you earn"
 
 /* ════════════════════════════════════════════════════════════════
-   1.  PRICE RANGE + PROFIT ZONE
-       Shows min/modal/max per market with the profit gap highlighted.
-       Modal price is the reference line everyone can compare against.
+   1. PRICE RANGE  — horizontal range bar per market
+      Modal price dot + "Earn" marker + % vs best benchmark
    ════════════════════════════════════════════════════════════════ */
 export function PriceRangeChart({ data }) {
-  if (!data.length) return null;
+  if (!data?.length) return null;
 
-  const allPrices = data.flatMap((d) =>
+  const allP = data.flatMap((d) =>
     [d.min_price, d.price, d.max_price, d.net_realization].map(Number).filter(Boolean)
   );
-  const minAll = Math.min(...allPrices) * 0.97;
-  const maxAll = Math.max(...allPrices) * 1.03;
+  const lo = Math.min(...allP) * 0.96;
+  const hi = Math.max(...allP) * 1.04;
+  const range = hi - lo || 1;
+  const pct = (v) => `${(((Number(v) || lo) - lo) / range) * 100}%`;
 
-  const H  = 48;
-  const LW = 140;
-  const W  = 420;
-  const height = data.length * H + 36;
-  const toX = (v) => LW + ((Number(v) - minAll) / (maxAll - minAll)) * W;
-
-  // Best market modal price as the reference line
   const bestModal = Number(data[0]?.price) || 0;
-  const refX = toX(bestModal);
+  const refPct    = pct(bestModal);
 
   return (
-    <svg viewBox={`0 0 ${LW + W + 90} ${height}`} className="svg-chart" aria-label="Price range per market">
-      {/* Reference line: Best modal price */}
-      <line x1={refX} x2={refX} y1={0} y2={height - 20} stroke="#186b50" strokeWidth="1.5" strokeDasharray="4 3" opacity="0.5" />
-      <text x={refX} y={height - 6} textAnchor="middle" fontSize="9" fill="#186b50" fontWeight="700">
-        Best ₹{fmtNum(bestModal)}
-      </text>
+    <div style={{ padding: "4px 0 8px" }}>
+      {/* Legend row */}
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 14, fontSize: 12, color: "#555" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 12, height: 12, borderRadius: "50%", background: G, display: "inline-block" }} />
+          Modal price (dot)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 12, height: 4, borderRadius: 2, background: "#a8d4bd", display: "inline-block" }} />
+          Price range (min–max)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 3, height: 14, borderRadius: 2, background: EARN, display: "inline-block" }} />
+          What you earn (net)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 20, borderTop: "2px dashed #186b50", display: "inline-block", verticalAlign: "middle" }} />
+          Best market benchmark
+        </span>
+      </div>
 
-      {/* X-axis labels */}
-      <text x={LW} y={height - 6} fontSize="9" fill="#bbb">{fmt(minAll)}</text>
-      <text x={LW + W} y={height - 6} fontSize="9" fill="#bbb" textAnchor="end">{fmt(maxAll)}</text>
+      {/* Chart rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {data.map((d, i) => {
+          const modal  = Number(d.price) || 0;
+          const net    = Number(d.net_realization) || 0;
+          const minP   = Number(d.min_price) || modal;
+          const maxP   = Number(d.max_price) || modal;
+          const isBest = i === 0;
+          const delta  = bestModal > 0 && modal > 0
+            ? Math.round(((modal - bestModal) / bestModal) * 100) : null;
 
-      {data.map((d, i) => {
-        const y       = i * H + 6;
-        const xMin    = toX(d.min_price || d.price);
-        const xModal  = toX(d.price);
-        const xMax    = toX(d.max_price || d.price);
-        const xNet    = toX(d.net_realization || d.price);
-        const isBest  = i === 0;
-        const profit  = Number(d.net_realization) || 0;
-        const modal   = Number(d.price) || 0;
-        const gap     = profit > 0 && modal > 0 ? Math.round(((profit - modal) / modal) * 100) : null;
+          return (
+            <div key={d.name || i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Market name */}
+              <div style={{
+                width: 110, minWidth: 110, fontSize: 12, textAlign: "right",
+                fontWeight: isBest ? 700 : 400,
+                color: isBest ? G : "#555",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
+                {isBest && "★ "}{shortName(d.name)}
+              </div>
 
-        return (
-          <g key={d.name || i}>
-            {/* Market name */}
-            <text x={LW - 8} y={y + H / 2 + 4} textAnchor="end" fontSize="11"
-              fill={isBest ? BEST_COLOR : "#6b7e76"} fontWeight={isBest ? "700" : "400"}>
-              {shortName(d.name)}
-            </text>
+              {/* Bar track */}
+              <div style={{ flex: 1, position: "relative", height: 28 }}>
+                {/* Full track */}
+                <div style={{
+                  position: "absolute", top: 11, left: 0, right: 0,
+                  height: 6, background: "#ece8de", borderRadius: 3
+                }} />
 
-            {/* Price range track */}
-            <rect x={LW} y={y + H / 2 - 3} width={W} height={6} rx="3" fill="#f0ede4" />
+                {/* Price range fill */}
+                <div style={{
+                  position: "absolute", top: 11,
+                  left: pct(minP), width: `calc(${pct(maxP)} - ${pct(minP)})`,
+                  height: 6, background: isBest ? "#a8d4bd" : "#c5ddd1", borderRadius: 3,
+                  minWidth: 2
+                }} />
 
-            {/* Min–Max range bar */}
-            <rect
-              x={xMin} y={y + H / 2 - 3}
-              width={Math.max(xMax - xMin, 2)} height={6} rx="3"
-              fill={isBest ? "#a8d4bd" : "#c5ddd1"}
-            />
+                {/* Net earn marker */}
+                {net > 0 && (
+                  <div style={{
+                    position: "absolute", left: pct(net), top: 6,
+                    width: 3, height: 16, background: EARN, borderRadius: 2,
+                    transform: "translateX(-50%)"
+                  }}>
+                    <div style={{ position: "absolute", bottom: 17, left: "50%", transform: "translateX(-50%)",
+                      fontSize: 9, color: EARN, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      Earn
+                    </div>
+                  </div>
+                )}
 
-            {/* Net-realization marker (what you actually earn) */}
-            {d.net_realization && (
-              <>
-                <rect x={xNet - 2} y={y + H / 2 - 7} width={4} height={14} rx="1"
-                  fill={PROFIT_COLOR} opacity="0.85" />
-                <text x={xNet} y={y + H / 2 - 10} textAnchor="middle" fontSize="9" fill={PROFIT_COLOR} fontWeight="700">
-                  Earn
-                </text>
-              </>
-            )}
+                {/* Modal price dot */}
+                <div style={{
+                  position: "absolute", left: pct(modal), top: 7,
+                  width: isBest ? 14 : 11, height: isBest ? 14 : 11,
+                  borderRadius: "50%",
+                  background: isBest ? G : GL,
+                  border: "2px solid #fff",
+                  boxShadow: "0 1px 4px rgba(0,0,0,.18)",
+                  transform: "translateX(-50%)",
+                  zIndex: 2
+                }} />
 
-            {/* Modal price dot */}
-            <circle cx={xModal} cy={y + H / 2} r={isBest ? 8 : 6}
-              fill={isBest ? BEST_COLOR : OTHER_COLOR} />
-            <circle cx={xModal} cy={y + H / 2} r={isBest ? 3 : 2} fill="#fff" />
+                {/* Modal price label */}
+                <div style={{
+                  position: "absolute", left: pct(modal), top: -16,
+                  transform: "translateX(-50%)",
+                  fontSize: 11, fontWeight: isBest ? 700 : 500,
+                  color: isBest ? G : "#666",
+                  whiteSpace: "nowrap"
+                }}>
+                  {fmt(modal)}
+                </div>
 
-            {/* Modal price label */}
-            <text x={xModal} y={y + 11} textAnchor="middle" fontSize="10"
-              fill={isBest ? BEST_COLOR : "#888"} fontWeight={isBest ? "700" : "500"}>
-              {fmt(d.price)}
-            </text>
+                {/* Best market benchmark dashed line */}
+                <div style={{
+                  position: "absolute", left: refPct, top: 0, bottom: 0,
+                  borderLeft: "1.5px dashed rgba(24,107,80,.45)",
+                  pointerEvents: "none"
+                }} />
+              </div>
 
-            {/* Profit delta badge */}
-            {gap !== null && (
-              <text x={LW + W + 8} y={y + H / 2 + 4} fontSize="10"
-                fill={gap >= 0 ? PROFIT_COLOR : COST_COLOR} fontWeight="700">
-                {gap >= 0 ? `+${gap}%` : `${gap}%`}
-              </text>
-            )}
-
-            {/* Tick marks */}
-            <line x1={xMin} x2={xMin} y1={y + H / 2 - 6} y2={y + H / 2 + 6} stroke="#b0cfc0" strokeWidth="1.5" />
-            <line x1={xMax} x2={xMax} y1={y + H / 2 - 6} y2={y + H / 2 + 6} stroke="#b0cfc0" strokeWidth="1.5" />
-          </g>
-        );
-      })}
-    </svg>
+              {/* Delta badge */}
+              <div style={{ width: 54, textAlign: "right" }}>
+                {delta !== null && !isBest ? (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "2px 5px", borderRadius: 4,
+                    background: delta >= 0 ? "#e8f5e9" : "#fdecea",
+                    color: delta >= 0 ? EARN : RED
+                  }}>
+                    {delta >= 0 ? "+" : ""}{delta}%
+                  </span>
+                ) : isBest ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: G }}>★ Best</span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 /* ════════════════════════════════════════════════════════════════
-   2.  EARNINGS COMPARE  — Modal vs Take-Home with Profit Delta
-       Stacked bars + explicit ₹ profit annotation above each group.
+   2. EARNINGS COMPARE  — card per market, modal vs take-home bars
+      Profit delta shown as a clean chip, never overlapping.
    ════════════════════════════════════════════════════════════════ */
 export function PriceVsNetChart({ data }) {
-  if (!data.length) return null;
+  if (!data?.length) return null;
 
-  const prices = data.map((d) => Number(d.price) || 0);
-  const nets   = data.map((d) => Number(d.net_realization) || 0);
-  const maxVal = Math.max(...prices, ...nets, 1);
-
-  const BW  = 26;
-  const GAP = 5;
-  const GRP = 72;
-  const PAD = 50;
-  const H   = 210;
-  const iH  = H - PAD - 30;
-  const W   = data.length * GRP + PAD * 2;
-
-  const toY = (v) => PAD + iH - (v / maxVal) * iH;
+  const allVals = data.flatMap((d) => [Number(d.price), Number(d.net_realization)].filter(Boolean));
+  const maxVal  = Math.max(...allVals, 1);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="svg-chart" aria-label="Price vs earnings per market">
-      {/* Grid lines */}
-      {[0.25, 0.5, 0.75, 1].map((f) => {
-        const y = PAD + iH * (1 - f);
-        return (
-          <g key={f}>
-            <line x1={PAD} x2={W - PAD + 20} y1={y} y2={y} stroke="#e8e4da" strokeWidth="1" />
-            <text x={PAD - 5} y={y + 4} textAnchor="end" fontSize="9" fill="#bbb">{fmt(maxVal * f)}</text>
-          </g>
-        );
-      })}
-
-      {/* Bars per market */}
-      {data.map((d, i) => {
-        const cx     = PAD + i * GRP + GRP / 2;
-        const ph     = (prices[i] / maxVal) * iH;
-        const nh     = (nets[i]   / maxVal) * iH;
-        const pY     = toY(prices[i]);
-        const nY     = toY(nets[i]);
-        const isBest = i === 0;
-        const diff   = nets[i] - prices[i];
-        const diffPct = prices[i] > 0 ? Math.round((diff / prices[i]) * 100) : 0;
-        const label  = shortName(d.name).split(" ")[0];
-
-        return (
-          <g key={d.name || i}>
-            {/* Modal price bar (lighter) */}
-            <rect
-              x={cx - BW - GAP / 2} y={pY}
-              width={BW} height={Math.max(ph, 2)} rx="3"
-              fill={isBest ? "#a8d4bd" : "#c5ddd1"}
-            />
-            <text x={cx - BW / 2 - GAP / 2} y={pY - 4} textAnchor="middle"
-              fontSize="9" fill="#666">
-              {fmt(prices[i])}
-            </text>
-
-            {/* Net realization bar (darker = what you earn) */}
-            <rect
-              x={cx + GAP / 2} y={nY}
-              width={BW} height={Math.max(nh, 2)} rx="3"
-              fill={isBest ? BEST_COLOR : OTHER_COLOR}
-            />
-            <text x={cx + BW / 2 + GAP / 2} y={nY - 4} textAnchor="middle"
-              fontSize="9" fill={isBest ? BEST_COLOR : OTHER_COLOR} fontWeight="700">
-              {fmt(nets[i])}
-            </text>
-
-            {/* Profit delta label: ₹diff (pct%) */}
-            <rect
-              x={cx - 24} y={Math.min(pY, nY) - 22}
-              width={48} height={16} rx="4"
-              fill={diff >= 0 ? "#e8f5e9" : "#fdecea"}
-            />
-            <text x={cx} y={Math.min(pY, nY) - 11} textAnchor="middle"
-              fontSize="10" fontWeight="700"
-              fill={diff >= 0 ? PROFIT_COLOR : COST_COLOR}>
-              {diff >= 0 ? "+" : ""}{fmt(diff)} ({diffPct >= 0 ? "+" : ""}{diffPct}%)
-            </text>
-
-            {/* Market name */}
-            <text x={cx} y={PAD + iH + 16} textAnchor="middle" fontSize="10" fill="#6b7e76">{label}</text>
-          </g>
-        );
-      })}
-
+    <div>
       {/* Legend */}
-      <rect x={PAD} y={8} width="11" height="11" rx="2" fill="#c5ddd1" />
-      <text x={PAD + 15} y={18} fontSize="10" fill="#666">Modal price</text>
-      <rect x={PAD + 90} y={8} width="11" height="11" rx="2" fill={BEST_COLOR} />
-      <text x={PAD + 105} y={18} fontSize="10" fill="#666">You'll earn</text>
-      <rect x={PAD + 180} y={8} width="11" height="11" rx="2" fill="#e8f5e9" />
-      <text x={PAD + 195} y={18} fontSize="10" fill={PROFIT_COLOR} fontWeight="700">Profit delta</text>
-    </svg>
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 16, fontSize: 12, color: "#555" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 14, height: 14, borderRadius: 3, background: "#a8d4bd", display: "inline-block" }} />
+          Modal price (mandi rate)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 14, height: 14, borderRadius: 3, background: G, display: "inline-block" }} />
+          You'll earn (after costs)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 14, height: 14, borderRadius: 4, background: "#e8f5e9", border: "1px solid #a8d4bd", display: "inline-block" }} />
+          Profit delta vs modal
+        </span>
+      </div>
+
+      {/* Market cards */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+        {data.map((d, i) => {
+          const modal  = Number(d.price) || 0;
+          const net    = Number(d.net_realization) || 0;
+          const isBest = i === 0;
+          const diff   = net && modal ? net - modal : null;
+          const diffPct = diff !== null && modal > 0 ? Math.round((diff / modal) * 100) : null;
+          const modalPct = `${Math.round((modal / maxVal) * 100)}%`;
+          const netPct   = net ? `${Math.round((net / maxVal) * 100)}%` : "0%";
+
+          return (
+            <div key={d.name || i} style={{
+              flex: "1 1 150px", minWidth: 130, maxWidth: 200,
+              background: isBest ? "#f0f9f4" : "#fafaf8",
+              border: `1.5px solid ${isBest ? "#a8d4bd" : "#e5e0d6"}`,
+              borderRadius: 12, padding: "12px 14px",
+              boxShadow: isBest ? "0 2px 8px rgba(24,107,80,.12)" : "0 1px 3px rgba(0,0,0,.06)"
+            }}>
+              {/* Market name + best badge */}
+              <div style={{ fontSize: 12, fontWeight: 700, color: isBest ? G : "#444", marginBottom: 8,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {isBest && <span style={{ fontSize: 10, background: G, color: "#fff",
+                  borderRadius: 4, padding: "1px 5px", marginRight: 5 }}>★ Best</span>}
+                {shortName(d.name)}
+              </div>
+
+              {/* Modal price bar */}
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>Modal price</div>
+                <div style={{ background: "#ece8de", borderRadius: 4, height: 10, overflow: "hidden" }}>
+                  <div style={{ width: modalPct, height: "100%", background: "#a8d4bd", borderRadius: 4,
+                    transition: "width .4s ease", minWidth: 4 }} />
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginTop: 2 }}>{fmt(modal)}</div>
+              </div>
+
+              {/* Net earn bar */}
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>You'll earn</div>
+                <div style={{ background: "#ece8de", borderRadius: 4, height: 10, overflow: "hidden" }}>
+                  {net > 0
+                    ? <div style={{ width: netPct, height: "100%", background: isBest ? G : GL, borderRadius: 4,
+                        transition: "width .4s ease", minWidth: 4 }} />
+                    : <div style={{ height: "100%", display: "flex", alignItems: "center", paddingLeft: 6 }}>
+                        <span style={{ fontSize: 9, color: "#bbb" }}>No data</span>
+                      </div>
+                  }
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: isBest ? G : "#444", marginTop: 2 }}>
+                  {net > 0 ? fmt(net) : "—"}
+                </div>
+              </div>
+
+              {/* Profit delta chip */}
+              {diffPct !== null ? (
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  background: diffPct >= 0 ? "#e8f5e9" : "#fdecea",
+                  color: diffPct >= 0 ? EARN : RED,
+                  fontWeight: 700, fontSize: 12, padding: "3px 8px", borderRadius: 20
+                }}>
+                  {diffPct >= 0 ? "▲" : "▼"}
+                  {diffPct >= 0 ? "+" : ""}{fmt(Math.abs(diff))} ({Math.abs(diffPct)}%)
+                </div>
+              ) : (
+                <div style={{ fontSize: 10, color: "#bbb" }}>Profit data unavailable</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 /* ════════════════════════════════════════════════════════════════
-   3.  ARRIVAL VOLUME vs MODAL PRICE
-       Bubble size = arrivals (supply). Modal price shown as a
-       number inside. Farmers can spot: big bubble + low price
-       means oversupply risk; small bubble + high price = good.
+   3. MARKET VOLUME  — supply card per market
+      Price + supply share shown, oversupply flagged clearly.
    ════════════════════════════════════════════════════════════════ */
 export function ArrivalBubbleChart({ data }) {
-  if (!data.length) return null;
+  if (!data?.length) return null;
 
-  const vals   = data.map((d) => Number(d.arrival_quantity ?? d.arrival) || 50);
+  const vals   = data.map((d) => Number(d.arrival_quantity ?? d.arrival) || 0);
   const prices = data.map((d) => Number(d.price) || 0);
   const total  = vals.reduce((a, b) => a + b, 0) || 1;
-  const maxV   = Math.max(...vals, 1);
   const maxP   = Math.max(...prices, 1);
 
-  const W = 520; const CY = 90; const R_MAX = 54;
-  const colors = [BEST_COLOR, OTHER_COLOR, "#a8d4bd", "#c5ddd1", "#6cb290"];
-  const cx = (i) => 70 + i * ((W - 60) / Math.max(data.length, 1));
-
   return (
-    <svg viewBox={`0 0 ${W} ${CY * 2 + 60}`} className="svg-chart" aria-label="Market arrival volume vs price">
-      {data.map((d, i) => {
-        const v    = vals[i];
-        const r    = Math.max(14, (v / maxV) * R_MAX);
-        const pct  = Math.round((v / total) * 100);
-        const prc  = prices[i];
-        const isBest = i === 0;
-        // Colour: green bubble = high price, orange = low price
-        const priceRatio = maxP > 0 ? prc / maxP : 0;
-        const bubbleColor = isBest ? BEST_COLOR : priceRatio > 0.75 ? OTHER_COLOR : priceRatio > 0.5 ? "#b8860b" : "#c0392b";
-
-        return (
-          <g key={d.name || i}>
-            {/* Arrival bubble */}
-            <circle cx={cx(i)} cy={CY} r={r} fill={bubbleColor} opacity="0.9" />
-
-            {/* Modal price inside bubble — comparison anchor */}
-            <text x={cx(i)} y={CY - 4} textAnchor="middle" fontSize="10" fill="#fff" fontWeight="700">
-              {fmt(prc)}
-            </text>
-            <text x={cx(i)} y={CY + 9} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.85)">
-              modal
-            </text>
-
-            {/* Supply share below */}
-            <text x={cx(i)} y={CY + r + 16} textAnchor="middle" fontSize="10" fill="#6b7e76" fontWeight="600">
-              {shortName(d.name).split(" ")[0]}
-            </text>
-            <text x={cx(i)} y={CY + r + 29} textAnchor="middle" fontSize="9" fill="#aaa">
-              {fmtNum(v)} kg · {pct}% supply
-            </text>
-
-            {/* Warning flag for oversupply */}
-            {pct > 40 && (
-              <text x={cx(i)} y={CY + r + 42} textAnchor="middle" fontSize="9" fill={COST_COLOR} fontWeight="700">
-                ⚠ High supply
-              </text>
-            )}
-          </g>
-        );
-      })}
-
+    <div>
       {/* Legend */}
-      <circle cx={16} cy={CY * 2 + 48} r={6} fill={BEST_COLOR} />
-      <text x={26} y={CY * 2 + 52} fontSize="9" fill="#666">Best price</text>
-      <circle cx={90} cy={CY * 2 + 48} r={6} fill="#c0392b" />
-      <text x={100} y={CY * 2 + 52} fontSize="9" fill="#666">Lower price</text>
-      <text x={180} y={CY * 2 + 52} fontSize="9" fill="#aaa">Bigger bubble = more supply arriving</text>
-    </svg>
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 16, fontSize: 12, color: "#555" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 14, height: 14, borderRadius: 3, background: G, display: "inline-block" }} />
+          High price market
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 14, height: 14, borderRadius: 3, background: RED, display: "inline-block" }} />
+          Lower price / oversupply risk
+        </span>
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        {data.map((d, i) => {
+          const v     = vals[i];
+          const price = prices[i];
+          const pct   = total > 0 ? Math.round((v / total) * 100) : 0;
+          const pRatio = maxP > 0 ? price / maxP : 0;
+          const isBest = i === 0;
+          const isOverSupply = pct > 35;
+
+          const bg = isBest ? G : pRatio > 0.75 ? GL : pRatio > 0.5 ? GOLD : RED;
+
+          return (
+            <div key={d.name || i} style={{
+              flex: "1 1 140px", minWidth: 130, maxWidth: 190,
+              borderRadius: 12,
+              border: `1.5px solid ${isBest ? "#a8d4bd" : "#e5e0d6"}`,
+              background: isBest ? "#f0f9f4" : "#fafaf8",
+              padding: "12px 14px",
+              boxShadow: isBest ? "0 2px 8px rgba(24,107,80,.12)" : "none"
+            }}>
+              {/* Market name */}
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#333", marginBottom: 10,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {shortName(d.name)}
+              </div>
+
+              {/* Circular supply indicator */}
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                <div style={{
+                  width: 68, height: 68, borderRadius: "50%",
+                  background: bg,
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
+                  color: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,.15)"
+                }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1 }}>{fmt(price)}</div>
+                  <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>modal</div>
+                </div>
+              </div>
+
+              {/* Supply bar */}
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#888", marginBottom: 3 }}>
+                  <span>Supply share</span>
+                  <span style={{ fontWeight: 700, color: isOverSupply ? RED : "#555" }}>{pct}%</span>
+                </div>
+                <div style={{ background: "#ece8de", borderRadius: 4, height: 8, overflow: "hidden" }}>
+                  <div style={{
+                    width: `${pct}%`, height: "100%", borderRadius: 4,
+                    background: isOverSupply ? RED : bg,
+                    transition: "width .4s ease", minWidth: 2
+                  }} />
+                </div>
+              </div>
+
+              {/* Quantity */}
+              {v > 0 && (
+                <div style={{ fontSize: 11, color: "#777", textAlign: "center" }}>
+                  {fmtNum(v)} kg arriving
+                </div>
+              )}
+
+              {/* Oversupply warning */}
+              {isOverSupply && (
+                <div style={{
+                  marginTop: 8, padding: "4px 8px", background: "#fdecea",
+                  borderRadius: 6, fontSize: 11, fontWeight: 700, color: RED,
+                  textAlign: "center"
+                }}>
+                  ⚠ Oversupply — price may fall
+                </div>
+              )}
+
+              {/* Good sell signal */}
+              {!isOverSupply && isBest && (
+                <div style={{
+                  marginTop: 8, padding: "4px 8px", background: "#e8f5e9",
+                  borderRadius: 6, fontSize: 11, fontWeight: 700, color: G,
+                  textAlign: "center"
+                }}>
+                  ✓ Good to sell here
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 /* ════════════════════════════════════════════════════════════════
-   4.  NET REALIZATION RANKING  — with modal price reference line
-       Horizontal bars for take-home income.  A vertical dashed
-       line marks the best-market modal price so farmers can see
-       exactly how much each market lags behind in profit.
+   4. NET REALIZATION RANKING  — horizontal bar ranking
+      Modal price tick shown on each bar; % vs best on the right.
    ════════════════════════════════════════════════════════════════ */
-export function HBarChart({ data, valueKey, label, color = BEST_COLOR }) {
-  if (!data.length) return null;
+export function HBarChart({ data, label }) {
+  if (!data?.length) return null;
 
-  const nets     = data.map((d) => Number(d[valueKey]) || 0);
-  const modals   = data.map((d) => Number(d.price) || 0);
-  const allVals  = [...nets, ...modals];
-  const maxVal   = Math.max(...allVals, 1);
-  const bestNet  = nets[0];
+  const nets   = data.map((d) => Number(d.net_realization) || 0);
+  const modals = data.map((d) => Number(d.price) || 0);
+  const allV   = [...nets, ...modals].filter(Boolean);
+  const maxVal = Math.max(...allV, 1);
+
+  const bestNet   = nets[0];
   const bestModal = modals[0];
 
-  const H  = 40;
-  const LW = 148;
-  const W  = 460;
-  const height = data.length * H + 36;
-
-  const toX = (v) => (v / maxVal) * W;
-  const refX = LW + toX(bestModal);  // best-market modal price line
+  // Reference line position (best modal price)
+  const refPct = `${Math.round((bestModal / maxVal) * 100)}%`;
 
   return (
-    <svg viewBox={`0 0 ${LW + W + 80} ${height}`} className="svg-chart" aria-label={label}>
-      {/* Modal price reference line */}
-      <line x1={refX} x2={refX} y1={0} y2={height - 22}
-        stroke="#186b50" strokeWidth="1.5" strokeDasharray="5 3" opacity="0.6" />
-      <text x={refX} y={height - 8} textAnchor="middle" fontSize="9" fill="#186b50" fontWeight="700">
-        Modal ₹{fmtNum(bestModal)}
-      </text>
+    <div style={{ padding: "4px 0 8px" }}>
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 14, fontSize: 12, color: "#555" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 14, height: 14, borderRadius: 3, background: G, display: "inline-block" }} />
+          Net take-home (best market)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 14, height: 14, borderRadius: 3, background: GL, display: "inline-block" }} />
+          Net take-home (other markets)
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 20, borderTop: "2px dashed #186b50", display: "inline-block", verticalAlign: "middle" }} />
+          Best modal price (reference)
+        </span>
+      </div>
 
-      {data.map((d, i) => {
-        const val     = nets[i];
-        const modal   = modals[i];
-        const barW    = toX(val);
-        const y       = i * H + 4;
-        const isBest  = i === 0;
-        const fill    = isBest ? color : OTHER_COLOR;
-        const profitVsModal = modal > 0 ? Math.round(((val - modal) / modal) * 100) : 0;
-        const profitVsBest  = bestNet > 0 ? Math.round(((val - bestNet) / bestNet) * 100) : 0;
+      {/* Bar rows */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {data.map((d, i) => {
+          const net    = nets[i];
+          const modal  = modals[i];
+          const isBest = i === 0;
+          const netPct   = net    ? `${Math.round((net    / maxVal) * 100)}%` : "0%";
+          const modalPct = modal  ? `${Math.round((modal  / maxVal) * 100)}%` : "0%";
+          const vsBest   = bestNet > 0 && !isBest
+            ? Math.round(((net - bestNet) / bestNet) * 100) : null;
 
-        return (
-          <g key={d.name || i}>
-            {/* Market label */}
-            <text x={LW - 8} y={y + H / 2 + 5} textAnchor="end" fontSize="11"
-              fill={isBest ? BEST_COLOR : "#6b7e76"} fontWeight={isBest ? "700" : "400"}>
-              {shortName(d.name)}
-            </text>
+          return (
+            <div key={d.name || i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Market name */}
+              <div style={{
+                width: 110, minWidth: 110, fontSize: 12, textAlign: "right",
+                fontWeight: isBest ? 700 : 400,
+                color: isBest ? G : "#555",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
+                {isBest && "★ "}{shortName(d.name)}
+              </div>
 
-            {/* Bar track */}
-            <rect x={LW} y={y + 8} width={W} height={H - 16} rx="4" fill="#f0ede4" />
+              {/* Bar track */}
+              <div style={{ flex: 1, position: "relative", height: 32 }}>
+                {/* Track */}
+                <div style={{
+                  position: "absolute", top: 11, left: 0, right: 0,
+                  height: 10, background: "#ece8de", borderRadius: 5
+                }} />
 
-            {/* Net realization bar */}
-            <rect x={LW} y={y + 8} width={Math.max(barW, 2)} height={H - 16} rx="4" fill={fill} opacity="0.9" />
+                {/* Net realization bar */}
+                {net > 0 && (
+                  <div style={{
+                    position: "absolute", top: 11, left: 0,
+                    width: netPct, height: 10,
+                    background: isBest ? G : GL,
+                    borderRadius: 5, minWidth: 4,
+                    transition: "width .4s ease"
+                  }} />
+                )}
 
-            {/* Modal price tick on this market's bar */}
-            <line
-              x1={LW + toX(modal)} x2={LW + toX(modal)}
-              y1={y + 6} y2={y + H - 6}
-              stroke="#fff" strokeWidth="2" opacity="0.6"
-            />
+                {/* Modal price tick on this market's bar */}
+                {modal > 0 && (
+                  <div style={{
+                    position: "absolute", left: modalPct, top: 8,
+                    width: 2, height: 16, background: "rgba(255,255,255,0.7)",
+                    borderRadius: 1, transform: "translateX(-50%)", zIndex: 2
+                  }} />
+                )}
 
-            {/* Value label */}
-            <text x={LW + barW + 6} y={y + H / 2 + 5} fontSize="11"
-              fill={isBest ? BEST_COLOR : "#6b7e76"} fontWeight={isBest ? "700" : "500"}>
-              {fmt(val)}
-            </text>
+                {/* Best market reference dashed line */}
+                <div style={{
+                  position: "absolute", left: refPct, top: 0, bottom: 0,
+                  borderLeft: "1.5px dashed rgba(24,107,80,.5)",
+                  pointerEvents: "none", zIndex: 3
+                }} />
 
-            {/* vs best market delta */}
-            {!isBest && (
-              <text x={LW + W + 10} y={y + H / 2 + 5} fontSize="10"
-                fill={profitVsBest >= 0 ? PROFIT_COLOR : COST_COLOR} fontWeight="700">
-                {profitVsBest >= 0 ? "+" : ""}{profitVsBest}%
-              </text>
-            )}
-            {isBest && (
-              <text x={LW + W + 10} y={y + H / 2 + 5} fontSize="10"
-                fill={BEST_COLOR} fontWeight="700">
-                ★ Best
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+                {/* Value label */}
+                <div style={{
+                  position: "absolute", left: `calc(${netPct} + 6px)`, top: 11,
+                  fontSize: 11, fontWeight: isBest ? 700 : 500,
+                  color: isBest ? G : "#555", lineHeight: "10px",
+                  whiteSpace: "nowrap"
+                }}>
+                  {net > 0 ? fmt(net) : <span style={{ color: "#bbb", fontSize: 10 }}>No data</span>}
+                </div>
+              </div>
+
+              {/* vs Best badge */}
+              <div style={{ width: 60, textAlign: "right" }}>
+                {isBest ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: G }}>★ Best</span>
+                ) : vsBest !== null ? (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4,
+                    background: vsBest >= 0 ? "#e8f5e9" : "#fdecea",
+                    color: vsBest >= 0 ? EARN : RED
+                  }}>
+                    {vsBest >= 0 ? "+" : ""}{vsBest}%
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Bottom axis labels */}
+      <div style={{ display: "flex", justifyContent: "space-between",
+        paddingLeft: 120, marginTop: 6, fontSize: 10, color: "#bbb" }}>
+        <span>₹0</span>
+        <span style={{ color: "#186b50", fontWeight: 600 }}>← Modal {fmt(bestModal)}</span>
+        <span>{fmt(maxVal)}</span>
+      </div>
+    </div>
   );
 }
 
-/* ─── Forecast line chart (unchanged) ─── */
+/* ─── Forecast line chart (SVG, unchanged logic, cleaned up) ─── */
 export function ForecastLineChart({ forecast }) {
   if (!forecast?.forecasts) return null;
   const days   = Array.from({ length: 7 }, (_, i) => i + 1);
@@ -412,15 +549,15 @@ export function ForecastLineChart({ forecast }) {
         );
       })}
       <path d={areaD} fill={lineColor} opacity="0.08" />
-      <polyline points={pts} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={pts} fill="none" stroke={lineColor} strokeWidth="2.5"
+        strokeLinejoin="round" strokeLinecap="round" />
       {days.map((d, i) => (
         <g key={d}>
           <circle cx={toX(i)} cy={toY(vals[i])} r="4" fill={lineColor} />
           <circle cx={toX(i)} cy={toY(vals[i])} r="2" fill="#fff" />
           <text x={toX(i)} y={PAD + iH + 16} textAnchor="middle" fontSize="10" fill="#888">{dayLabel(d)}</text>
-          <text x={toX(i)} y={toY(vals[i]) - 10} textAnchor="middle" fontSize="10" fill={lineColor} fontWeight="600">
-            {fmt(vals[i])}
-          </text>
+          <text x={toX(i)} y={toY(vals[i]) - 10} textAnchor="middle" fontSize="10"
+            fill={lineColor} fontWeight="600">{fmt(vals[i])}</text>
         </g>
       ))}
       <text x={PAD + iW} y={PAD - 6} textAnchor="end" fontSize="11" fill={lineColor} fontWeight="700">

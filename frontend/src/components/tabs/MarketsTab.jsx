@@ -255,46 +255,38 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
             <>
               <h3 className="chart-title">📏 Price Range — Compare Markets at a Glance</h3>
               <p className="chart-desc muted small">
-                The <strong>filled dot</strong> is today's modal price. The <strong>green bar</strong> shows what you'll actually earn (net).
-                The dashed line is the best market's price — your benchmark. <strong>+% / −%</strong> shows how much you gain or lose vs that benchmark.
+                The <strong>dot</strong> = today's modal price. <strong>Green marker</strong> = what you'll earn.
+                Dashed line = best market benchmark. <strong>Badge</strong> shows % above/below best.
               </p>
               <PriceRangeChart data={displayMarkets} />
-              <div className="chart-legend-row">
-                <span className="legend-dot" style={{ background: "#186b50" }} /> Modal price (dot)
-                &nbsp;·&nbsp;
-                <span style={{ display:"inline-block", width:10, height:10, background:"#27ae60", borderRadius:2, verticalAlign:"middle" }} /> Net you earn
-                &nbsp;·&nbsp;
-                <span style={{ display:"inline-block", width:28, borderTop:"2px dashed #186b50", verticalAlign:"middle" }} /> Best market benchmark
-              </div>
             </>
           )}
           {chartTab === "earnings" && (
             <>
               <h3 className="chart-title">💰 Modal Price vs What You'll Actually Earn</h3>
               <p className="chart-desc muted small">
-                Light bar = market's modal price. Dark bar = your <strong>take-home after transport &amp; storage</strong>.
-                The badge above each pair shows the <strong>profit delta</strong> — how much more (or less) you earn vs the modal price.
+                Light bar = market's modal price. Dark bar = your <strong>take-home after costs</strong>.
+                The badge shows <strong>profit delta</strong> vs modal price — green means you earn more.
               </p>
               <PriceVsNetChart data={displayMarkets} />
             </>
           )}
           {chartTab === "arrivals" && (
             <>
-              <h3 className="chart-title">🚜 Supply Volume vs Modal Price — Spot Oversupply Risk</h3>
+              <h3 className="chart-title">🚜 Supply vs Price — Spot Oversupply Risk</h3>
               <p className="chart-desc muted small">
-                Each bubble's <strong>size = quantity arriving</strong> at that market. The price inside is today's modal.
-                <strong> Big bubble + low price</strong> = oversupply, avoid selling there. <strong>Small bubble + high price</strong> = scarcity premium, ideal to sell.
+                Price shown inside each card. Supply bar shows how much produce is arriving.
+                <strong> High supply + lower price</strong> = risky. <strong>Low supply + high price</strong> = sell here.
               </p>
               <ArrivalBubbleChart data={displayMarkets} />
             </>
           )}
           {chartTab === "net" && (
             <>
-              <h3 className="chart-title">📊 Net Profit Ranking — Best Market Highlighted</h3>
+              <h3 className="chart-title">📊 Net Profit Ranking — Best Market First</h3>
               <p className="chart-desc muted small">
-                Bars show your <strong>net realization</strong> (take-home after all costs) per market.
-                The dashed line marks the <strong>best market's modal price</strong> as a reference.
-                The <strong>% column</strong> on the right shows how much each market lags behind the best.
+                Bars = your <strong>net take-home</strong> after all costs. Dashed line = best market's modal price.
+                The <strong>% badge</strong> shows how much each market lags behind the best.
               </p>
               <HBarChart data={displayMarkets} valueKey="net_realization" label="Net realization per market" />
             </>
