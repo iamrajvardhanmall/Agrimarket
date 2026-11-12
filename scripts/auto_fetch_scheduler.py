@@ -57,7 +57,7 @@ def fetch_and_push() -> bool:
     # 3. Git add, commit, and push
     print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Changes detected in Dataset.csv. Pushing to GitHub...")
     run_command(["git", "add", str(DATASET_CSV)])
-    commit_msg = f"chore(data): auto-update mandi dataset [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}]"
+    commit_msg = f"auto-update mandi dataset [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}]"
     commit_res = run_command(["git", "commit", "-m", commit_msg])
     if commit_res.returncode != 0:
         print("Git commit failed.", file=sys.stderr)

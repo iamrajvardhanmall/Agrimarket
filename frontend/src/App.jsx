@@ -83,7 +83,7 @@ export default function App() {
       .then((d) => {
         if (d?.forecast) setForecast(d.forecast);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setForecastLoading(false));
   }, [commodity]);
 

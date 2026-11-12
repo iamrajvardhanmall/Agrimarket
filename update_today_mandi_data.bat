@@ -27,7 +27,7 @@ if "%DIFF%"=="" (
     echo [3/3] Pushing today's updated dataset to GitHub...
     git add data_engine\Dataset.csv
     for /f "tokens=1-3 delims=/ " %%a in ("%DATE%") do (
-        git commit -m "chore(data): auto-update mandi dataset [%%a-%%b-%%c]"
+        git commit -m "auto-update mandi dataset [%%a-%%b-%%c]"
     )
     git push origin Raj
     echo.
@@ -38,3 +38,4 @@ if "%DIFF%"=="" (
 
 echo.
 pause
+

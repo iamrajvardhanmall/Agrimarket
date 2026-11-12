@@ -52,7 +52,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No new market data found or dataset is unchanged. Skipping commit."
           else
-            git commit -m "chore(data): auto-update mandi dataset (every 12h) [skip ci]"
+            git commit -m "auto-update mandi dataset (every 12h) [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
             echo "Dataset successfully updated and pushed to GitHub."
           fi
