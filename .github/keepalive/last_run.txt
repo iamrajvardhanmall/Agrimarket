@@ -1,2 +1,3 @@
-Keepalive initialized 2026-11-13 12:15 UTC
-This file is auto-updated every 12h by GitHub Actions to prevent schedule deactivation.
+Last scheduled run: 2026-11-13 06:58:30 UTC
+Fetch result: true
+Note: data.gov.in blocks Azure/GitHub runner IPs. Use update_today_mandi_data.bat locally for live data.
