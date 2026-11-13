@@ -30,7 +30,6 @@ export function SellingPlanTab({
         <h1 className="hero-title">{t.todayAdvice}</h1>
         <div className="hero-market">
           <IconPin /> <strong>{marketName}</strong>
-          {best?.distance ? <span className="muted"> · {best.distance} km</span> : null}
           {best?.demand   ? <span className={`demand-pill demand-${(best.demand || "").toLowerCase()}`}>{best.demand}</span> : null}
         </div>
         <div className="hero-net">

@@ -198,7 +198,6 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
                 <th>{t.marketName}</th>
                 <th>{t.modalPrice}</th>
                 <th>Min / Max</th>
-                <th>{t.distance}</th>
                 <th>{t.demand}</th>
                 <th>{t.trend7}</th>
                 <th>{t.profit}</th>
@@ -215,7 +214,6 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
                   </td>
                   <td><strong>{fmt(m.price)}</strong></td>
                   <td className="muted small">{fmtNum(m.min_price)} / {fmtNum(m.max_price)}</td>
-                  <td>{m.distance ? `${m.distance} km` : "—"}</td>
                   <td><span className={`demand-pill demand-${(m.demand || "").toLowerCase()}`}>{m.demand || "—"}</span></td>
                   <td>
                     {m.trend > 0
