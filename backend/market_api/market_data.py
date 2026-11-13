@@ -52,6 +52,8 @@ def load_dataset_metadata() -> dict:
 
     locations: dict[str, set[str]] = {}
     markets_by_district: dict[str, set[str]] = {}
+    commodities_by_state: dict[str, set[str]] = {}
+    commodities_by_district: dict[str, set[str]] = {}
     commodities: set[str] = set()
     grades: set[str] = set()
     varieties: set[str] = set()
@@ -70,6 +72,10 @@ def load_dataset_metadata() -> dict:
                     locations.setdefault(state, set()).add(district)
                 if district and market:
                     markets_by_district.setdefault(district, set()).add(market)
+                if state and commodity:
+                    commodities_by_state.setdefault(state, set()).add(commodity)
+                if district and commodity:
+                    commodities_by_district.setdefault(district, set()).add(commodity)
                 if commodity:
                     commodities.add(commodity)
                 if grade:
@@ -85,6 +91,8 @@ def load_dataset_metadata() -> dict:
     _DATASET_METADATA_CACHE = {
         "locations": {state: sorted(districts) for state, districts in sorted(locations.items())},
         "markets_by_district": {dist: sorted(mkts) for dist, mkts in sorted(markets_by_district.items())},
+        "commodities_by_state": {state: sorted(c) for state, c in sorted(commodities_by_state.items())},
+        "commodities_by_district": {dist: sorted(c) for dist, c in sorted(commodities_by_district.items())},
         "commodities": sorted(list(commodities)),
         "grades": all_grades,
         "varieties": sorted(list(varieties))[:100],
@@ -119,12 +127,16 @@ def fallback_market_data(
     market: str | None = None,
     commodity_group: str | None = None,
     variety: str | None = None,
+    grade: str | None = None,
 ) -> list[dict]:
     """
-    Build market list from Dataset.csv with hierarchical fallback:
-      exact (commodity+state+district+market+variety)
-      → state+commodity  → commodity  → static FALLBACK_MARKETS
-    Returns at most 10 markets, each normalised for calculate_recommendation.
+    Build market list from Dataset.csv with strict geographical hierarchy:
+      exact (commodity+state+district+market+variety+grade)
+      → commodity+state+district+market
+      → commodity+state+district
+      → user's chosen district & market (preserves location!)
+      → commodity+state
+      → state only
     """
     from collections import defaultdict
     from statistics import mean as _mean
@@ -138,10 +150,11 @@ def fallback_market_data(
     d_q = _clean(district)
     m_q = _clean(market)
     v_q = _clean(variety)
+    g_q = _clean(grade)
     cg_q = _clean(commodity_group)
 
     # ----- filter CSV rows -----------------------------------------------
-    def _filter(rows, rc, rs, rd, rm, rv):
+    def _filter(rows, rc, rs, rd, rm, rv, rg):
         out = []
         for r in rows:
             if rc and rc not in r.get("Commodity", "").lower():
@@ -154,6 +167,8 @@ def fallback_market_data(
                 continue
             if rv and rv not in r.get("Variety", "").lower():
                 continue
+            if rg and rg not in r.get("Grade", "").lower():
+                continue
             out.append(r)
         return out
 
@@ -164,20 +179,35 @@ def fallback_market_data(
     except OSError:
         all_rows = []
 
-    # hierarchical attempts
+    # hierarchical attempts:
+    # If the user specified district or market, we MUST respect their geographical filter!
     attempts = [
-        (c_q, s_q, d_q, m_q, v_q),   # exact
-        (c_q, s_q, d_q, "", ""),       # commodity + state + district
-        (c_q, s_q, "", "", ""),         # commodity + state
-        (c_q, "", "", "", ""),          # commodity only
-        ("", s_q, "", "", ""),          # state only
+        (c_q, s_q, d_q, m_q, v_q, g_q),
+        (c_q, s_q, d_q, m_q, v_q, ""),
+        (c_q, s_q, d_q, m_q, "", ""),
+        (c_q, s_q, d_q, "", "", ""),
     ]
 
+    # If district or market specified, prioritize their district/market even if commodity isn't listed there
+    if d_q or m_q:
+        if m_q:
+            attempts.append(("", s_q, d_q, m_q, "", ""))
+        attempts.append(("", s_q, d_q, "", "", ""))
+
+    # If state specified, search within state
+    if s_q:
+        attempts.append((c_q, s_q, "", "", "", ""))
+        attempts.append(("", s_q, "", "", "", ""))
+
+    # Global search only if neither state nor district was chosen
+    if not s_q and not d_q:
+        attempts.append((c_q, "", "", "", "", ""))
+
     matched: list[dict] = []
-    for rc, rs, rd, rm, rv in attempts:
-        if not any([rc, rs, rd, rm, rv]):
+    for rc, rs, rd, rm, rv, rg in attempts:
+        if not any([rc, rs, rd, rm, rv, rg]):
             continue
-        matched = _filter(all_rows, rc, rs, rd, rm, rv)
+        matched = _filter(all_rows, rc, rs, rd, rm, rv, rg)
         if matched:
             break
 
@@ -216,7 +246,6 @@ def fallback_market_data(
         avg_max   = _mean(v["max"]   for v in ps)
         sample    = ps[0]
         mkt_commodity = sample["commodity"]
-        distance  = KNOWN_DISTANCES.get(mkt_name, max(20 + idx * 15, 10))
         trend_val = round(((avg_max - avg_min) / max(avg_modal, 1)) * 10, 1)
 
         # commodity_group lookup
@@ -238,10 +267,10 @@ def fallback_market_data(
             "modal_price":      round(avg_modal),
             "min_price":        round(avg_min),
             "max_price":        round(avg_max),
+            "net_realization":  round(avg_modal),
             "trend":            trend_val,
             "arrival":          len(ps) * 100,   # proxy: row count × 100 qtl
             "arrival_quantity": len(ps) * 100,
-            "distance":         distance,
             "demand":           _demand_label(len(ps) * 100),
             "confidence":       75,
             "observed_on":      str(date.today()),
@@ -305,23 +334,24 @@ def fetch_market_data(
     market: str | None = None,
     commodity_group: str | None = None,
     variety: str | None = None,
+    grade: str | None = None,
 ) -> list[dict]:
     api_key = os.getenv("MARKET_DATA_API_KEY")
     if not api_key:
         LOGGER.warning("MARKET_DATA_API_KEY is not configured; using bundled market data.")
-        return fallback_market_data(commodity, district, state, market, commodity_group, variety)
+        return fallback_market_data(commodity, district, state, market, commodity_group, variety, grade)
 
     params = {
         "api-key": api_key,
         "format": "json",
         "limit": "1000",
     }
-    for key, value in (("state", state), ("district", district), ("market", market), ("commodity", commodity), ("variety", variety)):
+    for key, value in (("state", state), ("district", district), ("market", market), ("commodity", commodity), ("variety", variety), ("grade", grade)):
         if value and not value.lower().startswith("all "):
             params[key] = value
     request = Request(f"{DATA_GOV_RESOURCE}?{urlencode(params)}", headers={"Accept": "application/json"})
     try:
-        with urlopen(request, timeout=5) as response:
+        with urlopen(request, timeout=3) as response:
             payload = json.load(response)
         records = payload.get("records", [])
         normalized = [normalize_market(record, index) for index, record in enumerate(records)]
@@ -332,7 +362,7 @@ def fetch_market_data(
         return normalized
     except (OSError, ValueError, TypeError, json.JSONDecodeError, MarketDataError) as exc:
         LOGGER.warning("Market-data API unavailable: %s; using bundled market data.", exc)
-        return fallback_market_data(commodity, district, state, market, commodity_group, variety)
+        return fallback_market_data(commodity, district, state, market, commodity_group, variety, grade)
 
 
 def fetch_market_records(

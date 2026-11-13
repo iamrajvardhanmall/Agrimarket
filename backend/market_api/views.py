@@ -28,7 +28,7 @@ def health(request):
 @api_view(["GET"])
 def markets(request):
     commodity = request.query_params.get("commodity")
-    filters = {key: request.query_params.get(key) for key in ("district", "state", "market", "commodity_group", "variety")}
+    filters = {key: request.query_params.get(key) for key in ("district", "state", "market", "commodity_group", "variety", "grade")}
     markets = fetch_market_data(commodity=commodity, **filters)
     return Response({"commodity": commodity, "observed_on": str(date.today()), "markets": markets})
 
@@ -40,13 +40,15 @@ def locations(request):
 
 @api_view(["GET"])
 def forecast_metadata(request):
-    """Return all filterable options for the conditioned forecast UI."""
+    """Return all filterable options for the conditioned forecast and markets UI."""
     meta = load_dataset_metadata()
     return Response({
         "commodities": meta.get("commodities", []),
         "grades": meta.get("grades", []),
         "markets_by_district": meta.get("markets_by_district", {}),
         "locations": meta.get("locations", {}),
+        "commodities_by_state": meta.get("commodities_by_state", {}),
+        "commodities_by_district": meta.get("commodities_by_district", {}),
     })
 
 

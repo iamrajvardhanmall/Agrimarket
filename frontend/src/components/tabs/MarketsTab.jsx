@@ -40,7 +40,14 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
   const [fcGrade,     setFcGrade]     = useState("");
   const [fcData,      setFcData]      = useState(null);
   const [fcLoading,   setFcLoading]   = useState(false);
-  const [fcMeta,      setFcMeta]      = useState({ commodities: [], grades: [], locations: {}, markets_by_district: {} });
+  const [fcMeta,      setFcMeta]      = useState({
+    commodities: [],
+    grades: [],
+    locations: {},
+    markets_by_district: {},
+    commodities_by_state: {},
+    commodities_by_district: {},
+  });
 
   /* Load dropdown metadata once */
   useEffect(() => {
@@ -70,7 +77,7 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
 
   /* Fetch filtered markets whenever any market filter changes */
   useEffect(() => {
-    if (!mktCommodity && !mktState && !mktDistrict && !mktMarket) {
+    if (!mktCommodity && !mktState && !mktDistrict && !mktMarket && !mktVariety && !mktGrade) {
       setMktData(null);
       return;
     }
@@ -84,17 +91,30 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
     setMktLoading(true);
     fetch(`${API_BASE_URL}/markets/?${params}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d?.markets?.length) setMktData(d.markets); })
-      .catch(() => {})
+      .then((d) => {
+        if (d && Array.isArray(d.markets)) {
+          setMktData(d.markets);
+        } else {
+          setMktData([]);
+        }
+      })
+      .catch(() => {
+        setMktData([]);
+      })
       .finally(() => setMktLoading(false));
   }, [mktState, mktDistrict, mktMarket, mktCommodity, mktVariety, mktGrade]);
 
   /* Helpers */
-  const displayMarkets        = mktData || markets;
+  const hasActiveFilter       = Boolean(mktCommodity || mktState || mktDistrict || mktMarket || mktVariety || mktGrade);
+  const displayMarkets        = hasActiveFilter ? (mktData || []) : markets;
   const fcStateDistricts      = fcMeta.locations?.[fcState]              || [];
   const mktStateDistricts     = fcMeta.locations?.[mktState]             || [];
   const mktDistrictMarkets    = fcMeta.markets_by_district?.[mktDistrict] || [];
-  const fcDistrictMarkets = fcMeta.markets_by_district?.[fcDistrict] || [];
+  const fcDistrictMarkets     = fcMeta.markets_by_district?.[fcDistrict] || [];
+  const mktAvailableCommodities =
+    (mktDistrict && fcMeta.commodities_by_district?.[mktDistrict]) ||
+    (mktState && fcMeta.commodities_by_state?.[mktState]) ||
+    fcMeta.commodities || [];
   const matchColors = {
     exact: "#186b50",
     district_grade: "#2a7a5f",
@@ -126,14 +146,14 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
         <div className="fc-filter-grid">
           <label>
             🌾 Commodity
-            <select value={mktCommodity} onChange={(e) => { setMktCommodity(e.target.value); setMktData(null); }}>
+            <select value={mktCommodity} onChange={(e) => setMktCommodity(e.target.value)}>
               <option value="">— Any crop —</option>
-              {fcMeta.commodities.map((c) => <option key={c} value={c}>{c}</option>)}
+              {mktAvailableCommodities.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
           <label>
             📍 State
-            <select value={mktState} onChange={(e) => { setMktState(e.target.value); setMktDistrict(""); setMktMarket(""); setMktData(null); }}>
+            <select value={mktState} onChange={(e) => { setMktState(e.target.value); setMktDistrict(""); setMktMarket(""); }}>
               <option value="">— Any state —</option>
               {Object.keys(fcMeta.locations || {}).sort().map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -142,7 +162,7 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
             🏘️ District
             <select
               value={mktDistrict}
-              onChange={(e) => { setMktDistrict(e.target.value); setMktMarket(""); setMktData(null); }}
+              onChange={(e) => { setMktDistrict(e.target.value); setMktMarket(""); }}
               disabled={!mktState}
             >
               <option value="">— Any district —</option>
@@ -151,7 +171,7 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
           </label>
           <label>
             🏪 Market
-            <select value={mktMarket} onChange={(e) => { setMktMarket(e.target.value); setMktData(null); }} disabled={!mktDistrict}>
+            <select value={mktMarket} onChange={(e) => setMktMarket(e.target.value)} disabled={!mktDistrict}>
               <option value="">— Any market —</option>
               {mktDistrictMarkets.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
@@ -162,12 +182,12 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
               type="text"
               value={mktVariety}
               placeholder="e.g. Hybrid, Desi…"
-              onChange={(e) => { setMktVariety(e.target.value); setMktData(null); }}
+              onChange={(e) => setMktVariety(e.target.value)}
             />
           </label>
           <label>
             🏷️ Grade
-            <select value={mktGrade} onChange={(e) => { setMktGrade(e.target.value); setMktData(null); }}>
+            <select value={mktGrade} onChange={(e) => setMktGrade(e.target.value)}>
               <option value="">— Any grade —</option>
               {fcMeta.grades.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
@@ -177,12 +197,12 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
         {/* Active filter tags */}
         {(mktCommodity || mktState || mktDistrict || mktMarket || mktVariety || mktGrade) && (
           <div className="filter-tags">
-            {mktCommodity && <span className="filter-tag" onClick={() => { setMktCommodity(""); setMktData(null); }}>🌾 {mktCommodity} ×</span>}
-            {mktGrade     && <span className="filter-tag" onClick={() => { setMktGrade(""); setMktData(null); }}>🏷️ {mktGrade} ×</span>}
-            {mktState     && <span className="filter-tag" onClick={() => { setMktState(""); setMktDistrict(""); setMktMarket(""); setMktData(null); }}>📍 {mktState} ×</span>}
-            {mktDistrict  && <span className="filter-tag" onClick={() => { setMktDistrict(""); setMktMarket(""); setMktData(null); }}>🏘️ {mktDistrict} ×</span>}
-            {mktMarket    && <span className="filter-tag" onClick={() => { setMktMarket(""); setMktData(null); }}>🏪 {mktMarket} ×</span>}
-            {mktVariety   && <span className="filter-tag" onClick={() => { setMktVariety(""); setMktData(null); }}>🌿 {mktVariety} ×</span>}
+            {mktCommodity && <span className="filter-tag" onClick={() => setMktCommodity("")}>🌾 {mktCommodity} ×</span>}
+            {mktGrade     && <span className="filter-tag" onClick={() => setMktGrade("")}>🏷️ {mktGrade} ×</span>}
+            {mktState     && <span className="filter-tag" onClick={() => { setMktState(""); setMktDistrict(""); setMktMarket(""); }}>📍 {mktState} ×</span>}
+            {mktDistrict  && <span className="filter-tag" onClick={() => { setMktDistrict(""); setMktMarket(""); }}>🏘️ {mktDistrict} ×</span>}
+            {mktMarket    && <span className="filter-tag" onClick={() => setMktMarket("")}>🏪 {mktMarket} ×</span>}
+            {mktVariety   && <span className="filter-tag" onClick={() => setMktVariety("")}>🌿 {mktVariety} ×</span>}
           </div>
         )}
         {mktLoading && <p className="loading-text">Loading markets…</p>}
@@ -204,25 +224,37 @@ export function MarketsTab({ t, markets, ranking, forecast, forecastLoading, dat
               </tr>
             </thead>
             <tbody>
-              {displayMarkets.map((m, i) => (
-                <tr key={m.id || m.name} className={i === 0 ? "best-row" : ""}>
-                  <td><span className={`rank-badge rank-${i + 1}`}>{m.rank || i + 1}</span></td>
-                  <td>
-                    <strong>{m.name}</strong>
-                    {i === 0 && <span className="best-badge">★ Best</span>}
-                    <div className="muted small">{m.district}</div>
+              {displayMarkets.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: "center", padding: "32px 16px", color: "#666" }}>
+                    <div style={{ fontSize: "28px", marginBottom: "8px" }}>🔍</div>
+                    <strong>No markets found matching these filters.</strong>
+                    <div className="muted small" style={{ marginTop: "4px" }}>
+                      Try selecting another crop, district, or clearing some filters above.
+                    </div>
                   </td>
-                  <td><strong>{fmt(m.price)}</strong></td>
-                  <td className="muted small">{fmtNum(m.min_price)} / {fmtNum(m.max_price)}</td>
-                  <td><span className={`demand-pill demand-${(m.demand || "").toLowerCase()}`}>{m.demand || "—"}</span></td>
-                  <td>
-                    {m.trend > 0
-                      ? <span className="trend-up"><IconUp /> {m.trend}%</span>
-                      : <span className="trend-down"><IconDown /> {Math.abs(m.trend)}%</span>}
-                  </td>
-                  <td><strong className="net-value">{fmt(m.net_realization)}</strong></td>
                 </tr>
-              ))}
+              ) : (
+                displayMarkets.map((m, i) => (
+                  <tr key={m.id || m.name} className={i === 0 ? "best-row" : ""}>
+                    <td><span className={`rank-badge rank-${i + 1}`}>{m.rank || i + 1}</span></td>
+                    <td>
+                      <strong>{m.name}</strong>
+                      {i === 0 && <span className="best-badge">★ Best</span>}
+                      <div className="muted small">{m.district}</div>
+                    </td>
+                    <td><strong>{fmt(m.price)}</strong></td>
+                    <td className="muted small">{fmtNum(m.min_price)} / {fmtNum(m.max_price)}</td>
+                    <td><span className={`demand-pill demand-${(m.demand || "").toLowerCase()}`}>{m.demand || "—"}</span></td>
+                    <td>
+                      {m.trend > 0
+                        ? <span className="trend-up"><IconUp /> {m.trend}%</span>
+                        : <span className="trend-down"><IconDown /> {Math.abs(m.trend)}%</span>}
+                    </td>
+                    <td><strong className="net-value">{fmt(m.net_realization)}</strong></td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
