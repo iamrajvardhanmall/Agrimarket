@@ -178,12 +178,14 @@ def calculate_recommendation(markets, quantity_kg, transport_rate=38, storage_da
     options = []
     for market, features in zip(markets, feature_matrix):
         predicted_price, model_predictions = _ml_price_prediction(models, features)
-        transport = market["distance"] * transport_rate
+        m_dist = float(market.get("distance") or 20.0)
+        transport = m_dist * transport_rate
         storage = storage_days * storage_rate * quantity_kg
         revenue = predicted_price * quantity_kg / 100
         net = revenue - transport * quantity_kg / 100 - storage
         options.append({
             **market,
+            "distance": m_dist,
             "ml_predicted_price": predicted_price,
             "ml_model_predictions": {
                 "linear_regression": round(model_predictions[0], 2),
@@ -192,10 +194,10 @@ def calculate_recommendation(markets, quantity_kg, transport_rate=38, storage_da
             "transport_cost": round(transport * quantity_kg / 100),
             "storage_cost": round(storage),
             "net_realization": round(net),
-            "logistics_suitable": market["distance"] <= 100 and storage_days <= 30,
+            "logistics_suitable": m_dist <= 100 and storage_days <= 30,
             "logistics_note": (
                 "Suitable for the configured route and storage period."
-                if market["distance"] <= 100 and storage_days <= 30
+                if m_dist <= 100 and storage_days <= 30
                 else "Review route distance or storage duration before selling."
             ),
         })
@@ -210,16 +212,17 @@ def calculate_recommendation(markets, quantity_kg, transport_rate=38, storage_da
     best = ranked[0]
     alternate = ranked[1] if len(ranked) > 1 else None
     holding_days = max(storage_days, 3)
+    best_dist = float(best.get("distance") or 20.0)
     stored_features = np.array([
         best.get("min_price") or best["price"],
         best.get("max_price") or best["price"],
         best.get("arrival_quantity") or best.get("arrival") or 0,
-        best.get("distance") or 0,
+        best_dist,
         (best.get("trend") or 0) * holding_days / 7,
     ], dtype=float)
     projected_price, store_predictions = _ml_price_prediction(models, stored_features)
     store_revenue = projected_price * quantity_kg / 100
-    store_transport = best["distance"] * transport_rate * quantity_kg / 100
+    store_transport = best_dist * transport_rate * quantity_kg / 100
     store_cost = holding_days * storage_rate * quantity_kg
     store_option = {
         "type": "store_and_sell_later",

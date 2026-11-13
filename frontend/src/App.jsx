@@ -134,14 +134,17 @@ export default function App() {
         if (d.recommendation) setRecommendation(d.recommendation);
         if (d.decision_options) setDecisionOptions(d.decision_options);
         if (d.ranking) setRanking(d.ranking);
+        setDataError("");
         setToast("✅ Selling plan updated!");
       } else {
-        throw new Error("failed");
+        const errData = await r.json().catch(() => ({}));
+        throw new Error(errData.error || `Request failed with status ${r.status}`);
       }
-    } catch {
+    } catch (err) {
+      console.warn("Recommendations API fallback:", err);
       const updatedDemo = demoMarkets.map((m) => {
         const rev = (qtyVal / 100) * m.price;
-        const tCost = (qtyVal / 100) * m.distance * transportVal;
+        const tCost = (qtyVal / 100) * (m.distance || 20) * transportVal;
         const sCost = qtyVal * storageDaysVal * storageRateVal;
         const net = Math.round(rev - tCost - sCost);
         return { ...m, net_realization: net, transport_cost: Math.round(tCost), storage_cost: Math.round(sCost) };

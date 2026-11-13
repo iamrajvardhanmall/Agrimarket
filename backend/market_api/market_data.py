@@ -271,6 +271,7 @@ def fallback_market_data(
             "trend":            trend_val,
             "arrival":          len(ps) * 100,   # proxy: row count × 100 qtl
             "arrival_quantity": len(ps) * 100,
+            "distance":         KNOWN_DISTANCES.get(mkt_name, 20 + idx * 15),
             "demand":           _demand_label(len(ps) * 100),
             "confidence":       75,
             "observed_on":      str(date.today()),

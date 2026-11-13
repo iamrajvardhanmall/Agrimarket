@@ -83,6 +83,7 @@ def recommendations(request):
             market=request.data.get("market"),
             commodity_group=request.data.get("commodity_group"),
             variety=request.data.get("variety"),
+            grade=request.data.get("grade") or request.data.get("quality"),
         )
         # Support both naming conventions and avoid resetting valid 0 values
         q_raw = request.data.get("quantity_kg")
@@ -125,10 +126,13 @@ def recommendations(request):
 
         result = calculate_recommendation(markets, quantity_kg, transport_rate, storage_days, storage_rate)
         return Response(result)
-    except ValueError as exc:
+    except (ValueError, KeyError) as exc:
         return Response({"error": str(exc)}, status=400)
     except TypeError:
         return Response({"error": "Invalid recommendation payload."}, status=400)
+    except Exception as exc:
+        LOGGER.exception("Unexpected error in recommendations endpoint: %s", exc)
+        return Response({"error": "Failed to calculate recommendations."}, status=500)
 
 
 @api_view(["GET", "POST"])

@@ -1,0 +1,316 @@
+import json
+from pathlib import Path
+
+cells = [
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "# AgriMarket: Machine Learning Model Evaluation & Error Metrics\n",
+            "**Note**: *This notebook is strictly for offline model evaluation, error calculations, and presentation. It is NOT part of the runtime web UI pipeline.*\n",
+            "\n",
+            "### Topics & Techniques Covered:\n",
+            "1. **Introduction to Spark MLlib & PySpark Machine Learning Concepts**\n",
+            "2. **Regression Models & Error Evaluation**:\n",
+            "   - Multiple Linear Regression ($y = \\beta_0 + \\beta_1 X_1 + \\beta_2 X_2$)\n",
+            "   - Intercept ($\\beta_0$) and Coefficients ($\\beta_1, \\beta_2$)\n",
+            "   - Performance Metrics: **MAE (/qtl)**, **RMSE (/qtl)**, **MAPE (%)**, **$R^2$ Score**\n",
+            "3. **Classification Models & Performance Evaluation**:\n",
+            "   - Logistic Regression, Decision Tree Classifier, Linear SVM, Naive Bayes\n",
+            "   - Performance Matrix: **Confusion Matrix**, Precision, Recall, F1-Score\n",
+            "4. **Unsupervised Clustering**:\n",
+            "   - K-Means Market Profiling ($k=3$)\n",
+            "5. **Exploratory Correlation Analysis**:\n",
+            "   - Pearson Correlation Matrix and Feature Heatmap"
+        ]
+    },
+    {
+        "cell_type": "code",
+        "execution_count": 1,
+        "metadata": {},
+        "outputs": [],
+        "source": [
+            "import os\n",
+            "import numpy as np\n",
+            "import pandas as pd\n",
+            "import matplotlib.pyplot as plt\n",
+            "import seaborn as sns\n",
+            "from pathlib import Path\n",
+            "\n",
+            "from sklearn.linear_model import LinearRegression, LogisticRegression\n",
+            "from sklearn.tree import DecisionTreeClassifier\n",
+            "from sklearn.svm import LinearSVC\n",
+            "from sklearn.naive_bayes import GaussianNB\n",
+            "from sklearn.cluster import KMeans\n",
+            "from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, confusion_matrix, classification_report\n",
+            "from sklearn.model_selection import train_test_split\n",
+            "from sklearn.preprocessing import StandardScaler\n",
+            "\n",
+            "sns.set_theme(style='whitegrid', palette='muted')\n",
+            "plt.rcParams['figure.figsize'] = (10, 6)\n",
+            "print('Libraries loaded successfully.')"
+        ]
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "## 1. Load and Inspect Agrimarket Dataset\n",
+            "Dataset source: `data_engine/Dataset.csv` containing APMC mandi price records."
+        ]
+    },
+    {
+        "cell_type": "code",
+        "execution_count": 2,
+        "metadata": {},
+        "outputs": [],
+        "source": [
+            "data_path = Path('../data_engine/Dataset.csv')\n",
+            "if not data_path.exists():\n",
+            "    data_path = Path('data_engine/Dataset.csv')\n",
+            "\n",
+            "df = pd.read_csv(data_path)\n",
+            "print(f'Raw dataset shape: {df.shape}')\n",
+            "df.head()"
+        ]
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "## 2. Data Cleaning & Feature Preparation\n",
+            "Sanitize numeric columns: `Min_x0020_Price`, `Max_x0020_Price`, `Modal_x0020_Price`."
+        ]
+    },
+    {
+        "cell_type": "code",
+        "execution_count": 3,
+        "metadata": {},
+        "outputs": [],
+        "source": [
+            "for col in ['Min_x0020_Price', 'Max_x0020_Price', 'Modal_x0020_Price']:\n",
+            "    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')\n",
+            "\n",
+            "clean_df = df.dropna(subset=['Min_x0020_Price', 'Max_x0020_Price', 'Modal_x0020_Price']).copy()\n",
+            "clean_df = clean_df[(clean_df['Min_x0020_Price'] > 0) & (clean_df['Max_x0020_Price'] > 0) & (clean_df['Modal_x0020_Price'] > 0)]\n",
+            "print(f'Cleaned dataset records: {len(clean_df):,}')"
+        ]
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "## 3. Linear Regression: Coefficients, Intercept & Error Metrics\n",
+            "Predicting `Modal_x0020_Price` from `Min_x0020_Price` and `Max_x0020_Price`.\n",
+            "Mathematical Model:\n",
+            "$$\\text{Modal Price} = \\beta_0 + \\beta_1 \\cdot (\\text{Min Price}) + \\beta_2 \\cdot (\\text{Max Price}) + \\epsilon$$\n",
+            "\n",
+            "Target Performance Metrics:\n",
+            "- **MAE (/qtl)**: $\\frac{1}{N} \\sum |y - \\hat{y}|$\n",
+            "- **RMSE (/qtl)**: $\\sqrt{\\frac{1}{N} \\sum (y - \\hat{y})^2}$\n",
+            "- **MAPE (%)**: $\\frac{100\\%}{N} \\sum |\\frac{y - \\hat{y}}{y}|$\n",
+            "- **$R^2$ Score**: $1 - \\frac{\\sum (y - \\hat{y})^2}{\\sum (y - \\bar{y})^2}$"
+        ]
+    },
+    {
+        "cell_type": "code",
+        "execution_count": 4,
+        "metadata": {},
+        "outputs": [],
+        "source": [
+            "X = clean_df[['Min_x0020_Price', 'Max_x0020_Price']]\n",
+            "y = clean_df['Modal_x0020_Price']\n",
+            "\n",
+            "X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n",
+            "\n",
+            "reg = LinearRegression()\n",
+            "reg.fit(X_train, y_train)\n",
+            "y_pred = reg.predict(X_test)\n",
+            "\n",
+            "# Error calculations\n",
+            "intercept = reg.intercept_\n",
+            "coef_min, coef_max = reg.coef_[0], reg.coef_[1]\n",
+            "mae = mean_absolute_error(y_test, y_pred)\n",
+            "rmse = np.sqrt(mean_squared_error(y_test, y_pred))\n",
+            "mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100\n",
+            "r2 = r2_score(y_test, y_pred)\n",
+            "\n",
+            "print('=' * 55)\n",
+            "print(' LINEAR REGRESSION PARAMETERS & EVALUATION METRICS')\n",
+            "print('=' * 55)\n",
+            "print(f'Intercept (beta_0):       {intercept:.4f}')\n",
+            "print(f'Coef Min Price (beta_1):  {coef_min:.4f}')\n",
+            "print(f'Coef Max Price (beta_2):  {coef_max:.4f}')\n",
+            "print(f'MAE (/qtl):               Rs. {mae:.2f} / quintal')\n",
+            "print(f'RMSE (/qtl):              Rs. {rmse:.2f} / quintal')\n",
+            "print(f'MAPE (%):                 {mape:.2f} %')\n",
+            "print(f'R2 Score:                 {r2:.4f}')\n",
+            "print('=' * 55)\n",
+            "print(f'Regression Formula: Modal = {intercept:.4f} + {coef_min:.4f}*(Min) + {coef_max:.4f}*(Max)')"
+        ]
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "### Residual Error Distribution Plot"
+        ]
+    },
+    {
+        "cell_type": "code",
+        "execution_count": 5,
+        "metadata": {},
+        "outputs": [],
+        "source": [
+            "residuals = y_test - y_pred\n",
+            "fig, axes = plt.subplots(1, 2, figsize=(14, 5))\n",
+            "\n",
+            "axes[0].scatter(y_test, y_pred, alpha=0.3, color='#1b4332', s=10)\n",
+            "axes[0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)\n",
+            "axes[0].set_xlabel('Actual Modal Price (Rs./qtl)')\n",
+            "axes[0].set_ylabel('Predicted Modal Price (Rs./qtl)')\n",
+            "axes[0].set_title(f'Actual vs Predicted (R2 = {r2:.4f})')\n",
+            "\n",
+            "sns.histplot(residuals[(residuals > -2000) & (residuals < 2000)], kde=True, ax=axes[1], color='#2d6a4f')\n",
+            "axes[1].set_xlabel('Residual Error (Actual - Predicted)')\n",
+            "axes[1].set_title(f'Error Distribution (MAE: Rs.{mae:.2f}/qtl)')\n",
+            "plt.tight_layout()\n",
+            "plt.show()"
+        ]
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "## 4. Classification Models: Confusion Matrix & Performance Matrix\n",
+            "Classifying mandi price tiers (`Low`, `Medium`, `High`) based on price spread.\n",
+            "Models compared:\n",
+            "1. **Logistic Regression**\n",
+            "2. **Decision Tree Classifier**\n",
+            "3. **Linear Support Vector Machine (LinearSVC)**\n",
+            "4. **Gaussian Naive Bayes**"
+        ]
+    },
+    {
+        "cell_type": "code",
+        "execution_count": 6,
+        "metadata": {},
+        "outputs": [],
+        "source": [
+            "clean_df['Price_Tier'] = pd.qcut(clean_df['Modal_x0020_Price'], q=3, labels=['Low', 'Medium', 'High'])\n",
+            "clean_df['Spread'] = clean_df['Max_x0020_Price'] - clean_df['Min_x0020_Price']\n",
+            "\n",
+            "X_cls = clean_df[['Min_x0020_Price', 'Max_x0020_Price', 'Spread']]\n",
+            "y_cls = clean_df['Price_Tier']\n",
+            "\n",
+            "X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(X_cls, y_cls, test_size=0.2, random_state=42, stratify=y_cls)\n",
+            "\n",
+            "scaler = StandardScaler()\n",
+            "X_train_scaled = scaler.fit_transform(X_train_c)\n",
+            "X_test_scaled = scaler.transform(X_test_c)\n",
+            "\n",
+            "classifiers = {\n",
+            "    'Logistic Regression': LogisticRegression(max_iter=1000),\n",
+            "    'Decision Tree': DecisionTreeClassifier(max_depth=5, random_state=42),\n",
+            "    'Linear SVM': LinearSVC(dual='auto', max_iter=2000, random_state=42),\n",
+            "    'Gaussian Naive Bayes': GaussianNB(),\n",
+            "}\n",
+            "\n",
+            "fig, axes = plt.subplots(2, 2, figsize=(14, 11))\n",
+            "axes = axes.flatten()\n",
+            "classes = ['Low', 'Medium', 'High']\n",
+            "\n",
+            "for i, (name, clf) in enumerate(classifiers.items()):\n",
+            "    if name in ['Logistic Regression', 'Linear SVM']:\n",
+            "        clf.fit(X_train_scaled, y_train_c)\n",
+            "        preds = clf.predict(X_test_scaled)\n",
+            "    else:\n",
+            "        clf.fit(X_train_c, y_train_c)\n",
+            "        preds = clf.predict(X_test_c)\n",
+            "        \n",
+            "    cm = confusion_matrix(y_test_c, preds, labels=classes)\n",
+            "    sns.heatmap(cm, annot=True, fmt='d', cmap='Greens', xticklabels=classes, yticklabels=classes, ax=axes[i])\n",
+            "    axes[i].set_title(f'{name} - Confusion Matrix')\n",
+            "    axes[i].set_xlabel('Predicted')\n",
+            "    axes[i].set_ylabel('Actual')\n",
+            "    \n",
+            "    print(f'=== Classification Report: {name} ===')\n",
+            "    print(classification_report(y_test_c, preds, labels=classes))\n",
+            "\n",
+            "plt.tight_layout()\n",
+            "plt.show()"
+        ]
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "## 5. Unsupervised Learning: K-Means Clustering\n",
+            "Segmenting mandi price-arrival profiles into clusters."
+        ]
+    },
+    {
+        "cell_type": "code",
+        "execution_count": 7,
+        "metadata": {},
+        "outputs": [],
+        "source": [
+            "kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)\n",
+            "sample_data = clean_df.sample(n=min(5000, len(clean_df)), random_state=42)[['Min_x0020_Price', 'Max_x0020_Price']]\n",
+            "sample_clusters = kmeans.fit_predict(sample_data)\n",
+            "\n",
+            "plt.figure(figsize=(9, 6))\n",
+            "scatter = plt.scatter(sample_data['Min_x0020_Price'], sample_data['Max_x0020_Price'], c=sample_clusters, cmap='viridis', alpha=0.6, s=20)\n",
+            "centers = kmeans.cluster_centers_\n",
+            "plt.scatter(centers[:, 0], centers[:, 1], c='red', s=150, marker='X', label='Cluster Centroids')\n",
+            "plt.xlabel('Min Price (Rs./qtl)')\n",
+            "plt.ylabel('Max Price (Rs./qtl)')\n",
+            "plt.title('K-Means Clustering on Mandi Price Profiles (k=3)')\n",
+            "plt.legend()\n",
+            "plt.show()"
+        ]
+    },
+    {
+        "cell_type": "markdown",
+        "metadata": {},
+        "source": [
+            "## 6. Correlation Heatmap\n",
+            "Evaluating Pearson correlation across numerical market features."
+        ]
+    },
+    {
+        "cell_type": "code",
+        "execution_count": 8,
+        "metadata": {},
+        "outputs": [],
+        "source": [
+            "corr_matrix = clean_df[['Min_x0020_Price', 'Max_x0020_Price', 'Modal_x0020_Price', 'Spread']].corr()\n",
+            "plt.figure(figsize=(8, 6))\n",
+            "sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', vmin=-1, vmax=1, fmt='.3f', linewidths=1)\n",
+            "plt.title('Pearson Correlation Matrix of Mandi Price Features')\n",
+            "plt.show()"
+        ]
+    }
+]
+
+nb = {
+    "cells": cells,
+    "metadata": {
+        "language_info": {
+            "name": "python",
+            "version": "3.11"
+        },
+        "kernelspec": {
+            "display_name": "Python 3",
+            "language": "python",
+            "name": "python3"
+        }
+    },
+    "nbformat": 4,
+    "nbformat_minor": 5
+}
+
+target_path = Path("ml/model_evaluation_and_metrics.ipynb")
+target_path.write_text(json.dumps(nb, indent=2), encoding="utf-8")
+print(f"Successfully generated {target_path}")
+
