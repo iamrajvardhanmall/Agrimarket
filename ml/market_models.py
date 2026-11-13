@@ -22,10 +22,10 @@ from sklearn.metrics import (
     r2_score,
 )
 from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.svm import SVC
-from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 
@@ -60,8 +60,10 @@ def load_market_records(path: str | Path) -> list[dict[str, Any]]:
 
 
 def _features(records: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[float]]:
-    return (pd.DataFrame([{key: record[key] for key in FEATURES} for record in records]),
-            [record["modal_price"] for record in records])
+    return (
+        pd.DataFrame([{key: record[key] for key in FEATURES} for record in records]),
+        [record["modal_price"] for record in records],
+    )
 
 
 def _preprocessor() -> ColumnTransformer:
@@ -72,6 +74,7 @@ def _preprocessor() -> ColumnTransformer:
 
 
 def _dense_preprocessor() -> ColumnTransformer:
+    """Dense output needed for GaussianNB which does not accept sparse matrices."""
     return ColumnTransformer([
         ("numeric", StandardScaler(), list(NUMERIC_FEATURES)),
         ("categorical", OneHotEncoder(handle_unknown="ignore", sparse_output=False), list(CATEGORICAL_FEATURES)),
@@ -84,6 +87,7 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
         features, prices, test_size=0.2, random_state=random_state
     )
 
+    # ── Regression ──────────────────────────────────────────────────────────
     regressors = {
         "linear_regression": LinearRegression(),
         "decision_tree_regression": DecisionTreeRegressor(max_depth=12, random_state=random_state),
@@ -94,11 +98,12 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
         pipeline.fit(x_train, y_train)
         predictions = pipeline.predict(x_test)
         regression_metrics[name] = {
-            "mae": round(float(mean_absolute_error(y_test, predictions)), 2),
+            "mae":  round(float(mean_absolute_error(y_test, predictions)), 2),
             "rmse": round(float(np.sqrt(mean_squared_error(y_test, predictions))), 2),
-            "r2": round(float(r2_score(y_test, predictions)), 4),
+            "r2":   round(float(r2_score(y_test, predictions)), 4),
         }
 
+    # ── Classification ───────────────────────────────────────────────────────
     median_price = float(np.median(prices))
     labels = ["high" if price >= median_price else "standard" for price in prices]
     c_train, c_test, l_train, l_test = train_test_split(
@@ -107,9 +112,9 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
     classes = ["standard", "high"]
     classifiers = {
         "logistic_regression": LogisticRegression(max_iter=1000, random_state=random_state),
-        "decision_tree": DecisionTreeClassifier(max_depth=8, random_state=random_state),
-        "svm": SVC(kernel="rbf", random_state=random_state),
-        "naive_bayes": GaussianNB(),
+        "decision_tree":       DecisionTreeClassifier(max_depth=8, random_state=random_state),
+        "svm":                 SVC(kernel="rbf", random_state=random_state),
+        "naive_bayes":         GaussianNB(),
     }
     classification_metrics: dict[str, dict[str, Any]] = {}
     for name, estimator in classifiers.items():
@@ -120,36 +125,39 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
         matrix = confusion_matrix(l_test, label_predictions, labels=classes)
         classification_metrics[name] = {
             "accuracy": round(float(accuracy_score(l_test, label_predictions)), 4),
-            "f1": round(float(f1_score(l_test, label_predictions, average="weighted")), 4),
+            "f1":       round(float(f1_score(l_test, label_predictions, average="weighted")), 4),
             "confusion_matrix": matrix.tolist(),
         }
 
+    # ── Clustering (K-Means) ─────────────────────────────────────────────────
     cluster_values = np.array([
-        [record["min_price"], record["max_price"], record["modal_price"], record["arrival_quantity"]]
-        for record in records
+        [r["min_price"], r["max_price"], r["modal_price"], r["arrival_quantity"]]
+        for r in records
     ])
     cluster_values = StandardScaler().fit_transform(cluster_values)
     clusters = KMeans(n_clusters=3, random_state=random_state, n_init=10).fit(cluster_values)
+
+    # ── Correlation matrix ───────────────────────────────────────────────────
     correlation = pd.DataFrame({
-        "min_price": [record["min_price"] for record in records],
-        "max_price": [record["max_price"] for record in records],
-        "modal_price": [record["modal_price"] for record in records],
-        "arrival_quantity": [record["arrival_quantity"] for record in records],
-        "month": [record["month"] for record in records],
+        "min_price":        [r["min_price"]        for r in records],
+        "max_price":        [r["max_price"]         for r in records],
+        "modal_price":      [r["modal_price"]       for r in records],
+        "arrival_quantity": [r["arrival_quantity"]  for r in records],
+        "month":            [r["month"]             for r in records],
     }).corr().round(4).to_dict()
 
     return {
         "trained_on": len(records),
-        "features": list(FEATURES),
+        "features":   list(FEATURES),
         "regression": regression_metrics,
         "classification": {
-            "target": "price_opportunity",
+            "target":  "price_opportunity",
             "classes": classes,
-            "models": classification_metrics,
+            "models":  classification_metrics,
         },
         "clustering": {
-            "algorithm": "k_means",
-            "clusters": int(clusters.n_clusters),
+            "algorithm":    "k_means",
+            "clusters":     int(clusters.n_clusters),
             "cluster_sizes": np.bincount(clusters.labels_, minlength=3).tolist(),
         },
         "syllabus": {
@@ -164,36 +172,15 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
     }
 
 
-def write_correlation_heatmap(records: list[dict[str, Any]], output_path: str | Path) -> None:
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-
-    values = {
-        "min_price": [record["min_price"] for record in records],
-        "max_price": [record["max_price"] for record in records],
-        "modal_price": [record["modal_price"] for record in records],
-        "arrival_quantity": [record["arrival_quantity"] for record in records],
-        "month": [record["month"] for record in records],
-    }
-    correlation = pd.DataFrame(values).corr()
-    figure = plt.figure(figsize=(8, 6))
-    sns.heatmap(correlation, annot=True, cmap="YlGnBu",
-                xticklabels=values.keys(), yticklabels=values.keys())
-    figure.tight_layout()
-    figure.savefig(output_path, dpi=160)
-    plt.close(figure)
-
-
-def train_dataset(dataset_path: str | Path, heatmap_path: str | Path | None = None) -> dict[str, Any]:
+def train_dataset(dataset_path: str | Path) -> dict[str, Any]:
+    """Load dataset, train all models, return results dict."""
     records = load_market_records(dataset_path)
-    result = train_models(records)
-    if heatmap_path:
-        write_correlation_heatmap(records, heatmap_path)
-        result["correlation_heatmap"] = str(heatmap_path)
-    return result
+    return train_models(records)
 
 
 if __name__ == "__main__":
     root = Path(__file__).resolve().parents[1]
-    output = train_dataset(root / "data_engine" / "Dataset.csv", root / "ml" / "correlation_heatmap.png")
-    print(json.dumps(output, indent=2))
+    print(json.dumps(
+        train_dataset(root / "data_engine" / "Dataset.csv"),
+        indent=2,
+    ))
