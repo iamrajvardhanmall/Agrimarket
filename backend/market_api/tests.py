@@ -203,8 +203,8 @@ class MvpServiceTests(SimpleTestCase):
         } for index in range(40)]
         result = train_models(records)
 
-        self.assertIn("logistic_regression", result["classification"]["models"])
-        self.assertIn("svm", result["classification"]["models"])
-        self.assertIn("naive_bayes", result["classification"]["models"])
+        self.assertIn("linear_regression", result["regression"])
+        self.assertIn("decision_tree_regression", result["regression"])
+        self.assertIn("clustering", result)
         self.assertIn("r2", result["regression"]["linear_regression"])
         self.assertIn("correlation", result)

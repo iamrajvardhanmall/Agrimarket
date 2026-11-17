@@ -1,54 +1,18 @@
 """
 ========================================================================================
-AGRIMARKET: SPARK ML PROGRAMMING AND PYSPARK MACHINE LEARNING PIPELINE
+AGRIMARKET: CORE MACHINE LEARNING & STATISTICAL PIPELINE
 ========================================================================================
 
-Topic & Curriculum Coverage:
-1. Introduction to Machine Learning and PySpark:
-   - Machine learning enables predictive agricultural price optimization, demand forecasting,
-     and opportunity classification across pan-India APMC market yards.
-   - Apache Spark (PySpark) provides a distributed computing framework for large-scale
-     data processing, fault-tolerant memory abstraction (RDDs), and DataFrame optimization
-     via Catalyst Optimizer and Tungsten execution engine.
-
-2. Techniques of Machine Learning:
-   - Supervised Learning:
-     * Regression: Predict continuous target variables (modal price estimation).
-     * Classification: Categorize discrete target outcomes (standard vs. high price opportunity).
-   - Unsupervised Learning:
-     * Clustering: Group similar data points without ground truth labels (K-Means
-       market segmentation based on price spread, volume, and volatility).
-
-3. Introduction to Spark MLlib:
-   - Spark MLlib is Apache Spark's scalable machine learning library built natively on top
-     of DataFrames. It offers high-level APIs that unify data preparation, feature extraction,
-     distributed model training, and standardized evaluation.
-
-4. Key Concepts of Spark ML:
-   - DataFrame: Distributed collection of data organized into named columns.
-   - Transformer: Algorithm that transforms one DataFrame into another (e.g., VectorAssembler,
-     StandardScaler). Takes a DataFrame, returns a DataFrame.
-   - Estimator: Algorithm that fits on a DataFrame to produce a Transformer (e.g.,
-     LinearRegression, LogisticRegression, KMeans). Invokes .fit() -> Model.
-   - Pipeline: Chains multiple Transformers and Estimators together into a single ML workflow.
-   - Evaluator: Computes quantitative performance metrics comparing predictions against
-     ground truth labels (RegressionEvaluator, MulticlassClassificationEvaluator).
-
-5. Spark ML Algorithms Implemented:
-   - Linear Regression (Regression)
-   - Decision Tree Regressor (Regression)
-   - Logistic Regression (Binary Classification)
-   - Decision Tree Classifier (Multiclass / Binary Classification)
-   - Support Vector Machine - LinearSVC (Max-margin Classification)
-   - Naive Bayes (Probabilistic Classification)
-   - K-Means (Unsupervised Clustering)
-
-6. Evaluation and Performance Matrix:
-   - Confusion Matrix: Tabulates TP, FP, TN, FN for classification models.
-   - R2 (Coefficient of Determination): Proportion of variance explained by regression model.
-   - RMSE (Root Mean Squared Error): Quadratic scoring rule measuring average magnitude of error.
-   - MAE (Mean Absolute Error): Average magnitude of errors in predictions without direction.
-   - Correlation Heatmap: Bivariate Pearson correlation matrix across mandi price and volume drivers.
+Core Machine Learning Architecture:
+1. Supervised Learning: Price Regression
+   - Linear Regression: Deterministic baseline modeling modal price from boundary bids.
+   - Decision Tree Regressor: Captures localized spread volatility and volume shocks.
+2. Unsupervised Learning: Market Clustering
+   - K-Means Clustering (k=3): Profiles mandis into Local, Regional, and Terminal tiers.
+3. Statistical Feature Analysis:
+   - Pearson Correlation Matrix & Visual Heatmap Generation.
+4. Evaluation Metrics:
+   - R2 (Coefficient of Determination), RMSE, MAE.
 ========================================================================================
 """
 
@@ -67,21 +31,16 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    f1_score,
     mean_absolute_error,
     mean_squared_error,
     r2_score,
 )
 from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import GaussianNB
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.svm import LinearSVC
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.tree import DecisionTreeRegressor
 
 
 # Ensure local ml directory is importable
@@ -159,33 +118,21 @@ def _preprocessor() -> ColumnTransformer:
     ])
 
 
-def _dense_preprocessor() -> ColumnTransformer:
-    """Dense feature transformer required for Gaussian Naive Bayes."""
-    return ColumnTransformer([
-        ("numeric", StandardScaler(), list(NUMERIC_FEATURES)),
-        ("categorical", OneHotEncoder(handle_unknown="ignore", sparse_output=False), list(CATEGORICAL_FEATURES)),
-    ])
-
-
 # ========================================================================================
-# 2. MACHINE LEARNING TRAINING ENGINE (SPARK ML ARCHITECTURE)
+# 2. MACHINE LEARNING TRAINING ENGINE
 # ========================================================================================
 
 def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[str, Any]:
     """
-    Train and evaluate all syllabus algorithms across Supervised and Unsupervised techniques.
-    Implements regression, classification, clustering, confusion matrices, R2, RMSE, MAE,
-    and feature correlation.
+    Train and evaluate core AgriMarket models: Linear Regression, Decision Tree Regressor,
+    and K-Means Clustering, along with R2, RMSE, MAE, and Pearson correlation.
     """
     features, prices = _features(records)
     x_train, x_test, y_train, y_test = train_test_split(
         features, prices, test_size=0.2, random_state=random_state
     )
 
-    # ------------------------------------------------------------------------------------
-    # A. Supervised Learning: Regression Algorithms (Linear Regression & Decision Tree)
-    # Evaluators: R2, RMSE, MAE
-    # ------------------------------------------------------------------------------------
+    # A. Supervised Learning: Price Regression Models
     regressors = {
         "linear_regression": LinearRegression(),
         "decision_tree_regression": DecisionTreeRegressor(max_depth=12, random_state=random_state),
@@ -201,40 +148,7 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
             "r2":   round(float(r2_score(y_test, predictions)), 4),
         }
 
-    # ------------------------------------------------------------------------------------
-    # B. Supervised Learning: Classification Algorithms
-    # Models: Logistic Regression, Decision Tree, SVM, Naive Bayes
-    # Evaluators: Accuracy, Weighted F1 Score, Confusion Matrix
-    # ------------------------------------------------------------------------------------
-    median_price = float(np.median(prices))
-    labels = ["high" if price >= median_price else "standard" for price in prices]
-    c_train, c_test, l_train, l_test = train_test_split(
-        features, labels, test_size=0.2, random_state=random_state, stratify=labels
-    )
-    classes = ["standard", "high"]
-    classifiers = {
-        "logistic_regression": LogisticRegression(max_iter=1000, random_state=random_state),
-        "decision_tree":       DecisionTreeClassifier(max_depth=8, random_state=random_state),
-        "svm":                 LinearSVC(dual="auto", max_iter=2000, random_state=random_state),
-        "naive_bayes":         GaussianNB(),
-    }
-    classification_metrics: dict[str, dict[str, Any]] = {}
-    for name, estimator in classifiers.items():
-        preprocessor = _dense_preprocessor() if name == "naive_bayes" else _preprocessor()
-        classifier = Pipeline([("preprocessor", preprocessor), ("model", estimator)])
-        classifier.fit(c_train, l_train)
-        label_predictions = classifier.predict(c_test)
-        matrix = confusion_matrix(l_test, label_predictions, labels=classes)
-        classification_metrics[name] = {
-            "accuracy": round(float(accuracy_score(l_test, label_predictions)), 4),
-            "f1":       round(float(f1_score(l_test, label_predictions, average="weighted")), 4),
-            "confusion_matrix": matrix.tolist(),
-        }
-
-    # ------------------------------------------------------------------------------------
-    # C. Unsupervised Learning: Clustering (K-Means)
-    # Evaluators: Cluster size distribution, cluster centroid assignment
-    # ------------------------------------------------------------------------------------
+    # B. Unsupervised Learning: K-Means Market Profiling (k=3)
     cluster_values = np.array([
         [r["min_price"], r["max_price"], r["modal_price"], r["arrival_quantity"]]
         for r in records
@@ -242,9 +156,7 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
     cluster_values = StandardScaler().fit_transform(cluster_values)
     clusters = KMeans(n_clusters=3, random_state=random_state, n_init=10).fit(cluster_values)
 
-    # ------------------------------------------------------------------------------------
-    # D. Evaluation & Performance Matrix: Feature Correlation Matrix
-    # ------------------------------------------------------------------------------------
+    # C. Feature Correlation Matrix
     correlation = pd.DataFrame({
         "min_price":        [r["min_price"]        for r in records],
         "max_price":        [r["max_price"]        for r in records],
@@ -257,44 +169,17 @@ def train_models(records: list[dict[str, Any]], random_state: int = 42) -> dict[
         "trained_on": len(records),
         "features":   list(FEATURES),
         "regression": regression_metrics,
-        "classification": {
-            "target":  "price_opportunity",
-            "classes": classes,
-            "models":  classification_metrics,
-        },
         "clustering": {
-            "algorithm":    "k_means",
-            "clusters":     int(clusters.n_clusters),
+            "algorithm":     "k_means",
+            "clusters":      int(clusters.n_clusters),
             "cluster_sizes": np.bincount(clusters.labels_, minlength=3).tolist(),
         },
-        "syllabus": {
-            "topic": "Spark ML Programming and PySpark",
-            "framework": "Apache Spark MLlib / PySpark Unified ML Architecture",
-            "key_concepts": {
-                "DataFrame": "Distributed dataset with schema representing mandi transactions",
-                "Transformer": "Transforms input features via VectorAssembler and StandardScaler",
-                "Estimator": "Fits learning algorithms on DataFrames to produce predictive models",
-                "Pipeline": "Orchestrates multi-stage ML workflows ensuring zero leakage",
-                "Evaluator": "Computes standardized metrics across test splits",
-            },
-            "learning_types": ["supervised", "unsupervised"],
-            "algorithms": [
-                "linear_regression",
-                "logistic_regression",
-                "decision_tree",
-                "k_means",
-                "svm",
-                "naive_bayes",
-            ],
-            "metrics": [
-                "confusion_matrix",
-                "r2",
-                "rmse",
-                "mae",
-                "correlation_matrix",
-            ],
-        },
         "correlation": correlation,
+        "models_retained": [
+            "Linear Regression (Price Baseline)",
+            "Decision Tree Regressor (Spread Volatility)",
+            "K-Means Clustering (Market Profiling)",
+        ],
     }
 
 
@@ -318,84 +203,64 @@ def write_correlation_heatmap(records: list[dict[str, Any]], output_path: str | 
         "Max Price": [r["max_price"] for r in records],
         "Modal Price": [r["modal_price"] for r in records],
         "Arrival Volume": [r["arrival_quantity"] for r in records],
-        "Season (Month)": [r["month"] for r in records],
+        "Month": [r["month"] for r in records],
+        "Day of Year": [r["day_of_year"] for r in records],
     }
-    df_corr = pd.DataFrame(values).corr()
+    df = pd.DataFrame(values)
+    corr = df.corr()
 
-    fig, ax = plt.subplots(figsize=(7.5, 5.8), dpi=160)
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=150)
     sns.heatmap(
-        df_corr,
+        corr,
         annot=True,
-        fmt=".2f",
-        cmap="YlGnBu",
-        cbar=True,
+        fmt=".3f",
+        cmap="coolwarm",
+        vmin=-1,
+        vmax=1,
         linewidths=0.8,
-        linecolor="#ffffff",
+        linecolor="white",
+        cbar_kws={"label": "Pearson Correlation Coefficient"},
         ax=ax,
     )
-    ax.set_title("AgriMarket ML: Feature Correlation Heatmap (Spark ML Matrix)", fontsize=12, pad=12)
-    fig.tight_layout()
+    ax.set_title("AgriMarket: Inter-Feature Pearson Correlation Heatmap", fontsize=12, pad=12, fontweight="bold")
+    plt.tight_layout()
 
-    out_file = Path(output_path)
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_file, dpi=160)
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(str(out))
     plt.close(fig)
 
 
 # ========================================================================================
-# 4. PRIMARY CONNECTED ENTRY POINT
+# 4. UNIFIED PIPELINE RUNNER
 # ========================================================================================
 
-def train_dataset(
-    dataset_path: str | Path,
-    heatmap_path: str | Path | None = None,
-    engine: str = "auto",
-) -> dict[str, Any]:
+def train_dataset(path: str | Path, heatmap_path: str | Path | None = None) -> dict[str, Any]:
     """
-    Primary API entry point to train and evaluate ML models on the mandi dataset.
-    Seamlessly routes to PySpark (train_spark_models.py) when available or specified.
-
-    Args:
-        dataset_path: Path to Dataset.csv
-        heatmap_path: Optional path to save the correlation heatmap PNG
-        engine: 'auto', 'pyspark', or 'sklearn'.
+    Unified training pipeline that runs PySpark MLlib if available,
+    falling back cleanly to Scikit-Learn if running on CPU or low-resource server.
     """
-    # 1. Connect to train_spark_models if requested or if PySpark is available
-    if engine == "pyspark" or (engine == "auto" and is_spark_available()):
+    if is_spark_available():
         try:
-            result = train_spark_models(dataset_path)
-            if heatmap_path:
-                records = load_market_records(dataset_path, max_records=2000)
-                write_correlation_heatmap(records, heatmap_path)
-                result["correlation_heatmap"] = str(heatmap_path)
-            return result
-        except Exception as exc:
-            if engine == "pyspark":
-                raise
-            # If auto-mode failed on Spark, gracefully fall back to local engine
-            print(f"Notice: PySpark unavailable or encountered error ({exc}). Routing to local ML engine.", file=sys.stderr)
+            return train_spark_models(path)
+        except Exception:
+            pass  # Fall back to scikit-learn
 
-    # 2. Local ML training engine (with identical output structure)
-    records = load_market_records(dataset_path, max_records=10000)
-    result = train_models(records)
-
+    records = load_market_records(path)
+    payload = train_models(records)
     if heatmap_path:
-        try:
-            write_correlation_heatmap(records, heatmap_path)
-            result["correlation_heatmap"] = str(heatmap_path)
-        except Exception as exc:
-            result["correlation_heatmap_error"] = str(exc)
-
-    return result
+        write_correlation_heatmap(records, heatmap_path)
+        payload["correlation_heatmap"] = str(Path(heatmap_path).resolve())
+    return payload
 
 
 if __name__ == "__main__":
     root = Path(__file__).resolve().parents[1]
-    csv_file = root / "data_engine" / "Dataset.csv"
-    heatmap_file = root / "ml" / "correlation_heatmap.png"
+    dataset = root / "data_engine" / "Dataset.csv"
+    heatmap = root / "ml" / "correlation_heatmap.png"
+
     print("=" * 80)
-    print("AGRIMARKET: SPARK ML & PYSPARK TRAINING PIPELINE")
+    print("AGRIMARKET: CORE ML PIPELINE")
     print(f"Connected PySpark Module: {is_spark_available()}")
     print("=" * 80)
-    output = train_dataset(csv_file, heatmap_file)
-    print(json.dumps(output, indent=2))
+    print(json.dumps(train_dataset(dataset, heatmap), indent=2))
