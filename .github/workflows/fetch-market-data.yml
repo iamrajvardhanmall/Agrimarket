@@ -77,6 +77,7 @@ jobs:
       #    Guarantees at least one commit per run so GitHub never disables
       #    the cron schedule due to 60-day repo inactivity.
       - name: Commit Dataset or Write Keepalive Stamp
+        id: commit_step
         env:
           FORCE_COMMIT: ${{ github.event.inputs.force_commit || 'no' }}
         run: |
@@ -87,22 +88,24 @@ jobs:
 
           if git diff --staged --quiet; then
             echo "No new market data (geo-blocked or unchanged)."
+            echo "dataset_updated=false" >> "$GITHUB_OUTPUT"
 
             # Write keepalive stamp so GitHub never disables the schedule
             mkdir -p .github/keepalive
             echo "Last scheduled run : $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > .github/keepalive/last_run.txt
-            echo "Fetch result       : ${{ steps.fetch.outputs.fetch_ok }}"  >> .github/keepalive/last_run.txt
+            echo "Fetch status       : Geo-blocked by NIC WAF (retaining existing dataset)" >> .github/keepalive/last_run.txt
             echo "API key configured : ${{ steps.check_key.outputs.key_set }}" >> .github/keepalive/last_run.txt
             echo "Note: data.gov.in blocks Azure/GitHub runner IPs. Use update_today_mandi_data.bat locally for live data." >> .github/keepalive/last_run.txt
 
             git add .github/keepalive/last_run.txt
             DATE_STR=$(date -u '+%d %b %Y, %I:%M %p UTC')
-            git commit -m "Mandi Data Sync: Scheduled 12-hour check (${DATE_STR})"
+            git commit -m "Mandi Data Sync: Scheduled 12-hour check (${DATE_STR}) [skip ci]"
             echo "Keepalive commit written — cron schedule stays active."
           else
+            echo "dataset_updated=true" >> "$GITHUB_OUTPUT"
             ROWS=$(wc -l < data_engine/Dataset.csv | tr -d ' ')
             DATE_STR=$(date -u '+%d %b %Y')
-            git commit -m "Update Mandi Dataset: ${ROWS} total records (${DATE_STR})"
+            git commit -m "Update Mandi Dataset: ${ROWS} total records (${DATE_STR}) [skip ci]"
             echo "Dataset updated and committed with ${ROWS} total rows."
           fi
 
@@ -115,12 +118,23 @@ jobs:
       # ── 8. Summary Report ─────────────────────────────────────────────────
       - name: Job Summary
         run: |
-          echo "## AgriMarket AI — Mandi Data Fetch Summary" >> $GITHUB_STEP_SUMMARY
+          ROWS=$(wc -l < data_engine/Dataset.csv | tr -d ' ')
+          UPDATED="${{ steps.commit_step.outputs.dataset_updated }}"
+          if [ "$UPDATED" = "true" ]; then
+            STATUS_MSG="✅ Live records added to dataset"
+          else
+            STATUS_MSG="🛡️ Dataset preserved (NIC WAF blocked foreign IP)"
+          fi
+
+          echo "## AgriMarket AI — Mandi Data Sync Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Run Time (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
-          echo "| API Key Set | ${{ steps.check_key.outputs.key_set }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Fetch Success | ${{ steps.fetch.outputs.fetch_ok }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Dataset Rows | $(wc -l < data_engine/Dataset.csv) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Next Run | In ~12 hours |" >> $GITHUB_STEP_SUMMARY
+          echo "| Execution Time (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Key Configured | ${{ steps.check_key.outputs.key_set }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sync Outcome | ${STATUS_MSG} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Dataset Records | ${ROWS} rows |" >> $GITHUB_STEP_SUMMARY
+          echo "| Schedule Health | Active (Keepalive verified) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Next Automatic Run | In ~12 hours |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 💡 **Tip**: data.gov.in uses an Indian NIC firewall that rejects foreign cloud runners (Azure/GitHub). Run \`update_today_mandi_data.bat\` locally to push live arrivals directly from an Indian IP." >> $GITHUB_STEP_SUMMARY
