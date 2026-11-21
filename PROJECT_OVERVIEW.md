@@ -7,7 +7,6 @@
 > **Organization:** Government of Maharashtra  
 > **Category:** Software (Agricultural Economics, Decision Support Systems & Machine Learning)  
 > **Live Production Application:** [https://agrimarket-gold.vercel.app/](https://agrimarket-gold.vercel.app/)  
-> **Production Backend API:** [https://agrimarket-backend-nx69.onrender.com/api/health/](https://agrimarket-backend-nx69.onrender.com/api/health/)
 
 ---
 
