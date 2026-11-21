@@ -32,42 +32,50 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 2. Python setup (no pip cache — no requirements.txt exists) ──────
+      # ── 2. Python setup with pip cache ───────────────────────────────────
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
-      # ── 3. Install only what the script needs ────────────────────────────
+      # ── 3. Install required dependencies ─────────────────────────────────
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip --quiet
-          pip install python-dotenv --quiet
+          pip install python-dotenv requests --quiet
 
-      # ── 4. Try live data fetch (geo-block is expected; not a failure) ────
+      # ── 4. Validate MARKET_DATA_API_KEY is set ───────────────────────────
+      - name: Check API Key
+        id: check_key
+        run: |
+          if [ -z "${{ secrets.MARKET_DATA_API_KEY }}" ]; then
+            echo "::warning::MARKET_DATA_API_KEY secret is not set in GitHub repository secrets."
+            echo "key_set=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "key_set=true" >> "$GITHUB_OUTPUT"
+            echo "API key is configured."
+          fi
+
+      # ── 5. Run live data fetch ────────────────────────────────────────────
       - name: Run Mandi Fetch Script
         id: fetch
         env:
           MARKET_DATA_API_KEY: ${{ secrets.MARKET_DATA_API_KEY }}
+          CI: 'true'
         run: |
-          if [ -z "$MARKET_DATA_API_KEY" ]; then
-            echo "::warning::MARKET_DATA_API_KEY secret not set — skipping live fetch."
-            echo "fetch_ok=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           echo "Starting data fetch at $(date -u '+%Y-%m-%d %H:%M:%S UTC') ..."
           if python data_engine/fetch_daily_market_data.py --max-records 5000; then
             echo "fetch_ok=true" >> "$GITHUB_OUTPUT"
             echo "Live data fetched successfully."
           else
             echo "fetch_ok=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=data.gov.in Geo-Block::data.gov.in blocks foreign cloud runner IPs (Azure/GitHub). Dataset unchanged. This is expected — use update_today_mandi_data.bat locally to push live data."
+            echo "::warning title=data.gov.in Geo-Block::data.gov.in blocks foreign cloud runner IPs (Azure/GitHub). Dataset unchanged. Use update_today_mandi_data.bat locally to push live data."
           fi
 
-      # ── 5. Commit data if changed, OR write keepalive stamp ──────────────
-      #    This guarantees at least one commit every run so GitHub never
-      #    disables the cron schedule due to 60-day inactivity.
+      # ── 6. Commit Dataset.csv if changed, OR write keepalive stamp ────────
+      #    Guarantees at least one commit per run so GitHub never disables
+      #    the cron schedule due to 60-day repo inactivity.
       - name: Commit Dataset or Write Keepalive Stamp
         env:
           FORCE_COMMIT: ${{ github.event.inputs.force_commit || 'no' }}
@@ -79,22 +87,38 @@ jobs:
 
           if git diff --staged --quiet; then
             echo "No new market data (geo-blocked or unchanged)."
-            # Write a keepalive stamp so the cron job always produces a commit
-            # and GitHub never disables the schedule due to inactivity.
+
+            # Write keepalive stamp so GitHub never disables the schedule
             mkdir -p .github/keepalive
-            echo "Last scheduled run: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > .github/keepalive/last_run.txt
-            echo "Fetch result: ${{ steps.fetch.outputs.fetch_ok }}" >> .github/keepalive/last_run.txt
+            echo "Last scheduled run : $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > .github/keepalive/last_run.txt
+            echo "Fetch result       : ${{ steps.fetch.outputs.fetch_ok }}"  >> .github/keepalive/last_run.txt
+            echo "API key configured : ${{ steps.check_key.outputs.key_set }}" >> .github/keepalive/last_run.txt
             echo "Note: data.gov.in blocks Azure/GitHub runner IPs. Use update_today_mandi_data.bat locally for live data." >> .github/keepalive/last_run.txt
+
             git add .github/keepalive/last_run.txt
             git commit -m "chore(keepalive): scheduled run $(date -u '+%Y-%m-%d %H:%M UTC') [skip ci]"
             echo "Keepalive commit written — cron schedule stays active."
           else
-            git commit -m "auto-update mandi dataset $(date -u '+%Y-%m-%d') [skip ci]"
-            echo "Dataset updated and committed."
+            ROWS=$(wc -l < data_engine/Dataset.csv)
+            git commit -m "data: auto-update mandi dataset $(date -u '+%Y-%m-%d') — ${ROWS} total rows [skip ci]"
+            echo "Dataset updated and committed with ${ROWS} total rows."
           fi
 
-      # ── 6. Push ──────────────────────────────────────────────────────────
+      # ── 7. Push to GitHub ─────────────────────────────────────────────────
       - name: Push to GitHub
         run: |
           git push origin HEAD:${{ github.ref_name }}
           echo "Push complete. Next scheduled run in ~12 hours."
+
+      # ── 8. Summary Report ─────────────────────────────────────────────────
+      - name: Job Summary
+        run: |
+          echo "## AgriMarket AI — Mandi Data Fetch Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Run Time (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Key Set | ${{ steps.check_key.outputs.key_set }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Fetch Success | ${{ steps.fetch.outputs.fetch_ok }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dataset Rows | $(wc -l < data_engine/Dataset.csv) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Next Run | In ~12 hours |" >> $GITHUB_STEP_SUMMARY

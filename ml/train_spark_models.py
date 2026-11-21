@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 
 def is_spark_available() -> bool:
-    """Return True if PySpark and its core dependencies are installed and importable."""
     try:
         import pyspark  # noqa: F401
         from pyspark.sql import SparkSession  # noqa: F401
@@ -37,7 +36,6 @@ def train_spark_models(dataset_path: str | Path) -> dict[str, Any]:
             "Please run: pip install pyspark>=3.5.0"
         ) from exc
 
-    # 1. Initialize local SparkSession
     spark = (
         SparkSession.builder
         .appName("AgriMarket-SparkML-Pipeline")
@@ -50,7 +48,6 @@ def train_spark_models(dataset_path: str | Path) -> dict[str, Any]:
     spark.sparkContext.setLogLevel("ERROR")
 
     try:
-        # 2. Ingest Dataset into Spark DataFrame
         raw_df = (
             spark.read.option("header", True)
             .option("inferSchema", True)
@@ -338,10 +335,6 @@ def print_executive_report(results: dict[str, Any]) -> None:
     print("\n" + "-" * 84)
     print("[2] UNSUPERVISED LEARNING: K-MEANS MARKET PROFILING (k=3)")
     print(f">> Silhouette Score:  {cluster['silhouette_score']:.4f}")
-    print(f">> Cluster 0 (Local Rural Yards):     {cluster['cluster_sizes'][0]:,} mandis")
-    print(f">> Cluster 1 (Regional APMC Hubs):    {cluster['cluster_sizes'][1]:,} mandis")
-    print(f">> Cluster 2 (Terminal Mega-Hubs):    {cluster['cluster_sizes'][2]:,} mandis")
-    print(f">> Cluster Centroids (Min, Max):      {cluster['cluster_centroids']}")
 
     # 3. Correlation Section
     print("\n" + "-" * 84)
