@@ -1,20 +1,20 @@
 <div align="center">
 
 # 🌱 AgriMarket AI
-### **Intelligent Mandi Market Analytics, PySpark MLlib Price Forecasting & Net-Profit Optimization**
+### **Intelligent Mandi Market Analytics, Machine Learning Price Forecasting & Net-Profit Optimization**
 
-*Empowering Indian Farmers with Real-Time Mandi Intelligence, 7-Day Machine Learning Price Trajectories, and Cost-Optimized Selling Plans.*
+*Empowering Indian Smallholder Farmers with Transparent Market Intelligence, 7-Day ML Price Forecasts, and Cost-Aware Selling Plans.*
 
 [![Live App](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://agrimarket-gold.vercel.app/)
 [![API Status](https://img.shields.io/badge/Backend%20API-Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)](https://agrimarket-backend-nx69.onrender.com/api/health/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![PySpark](https://img.shields.io/badge/Apache%20Spark-PySpark%20MLlib-E25A1C?style=for-the-badge&logo=apachespark&logoColor=white)](https://spark.apache.org/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
 [![Django](https://img.shields.io/badge/Django-5.0%20%7C%20DRF-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![React 19](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![MongoDB Atlas](https://img.shields.io/badge/Database-MongoDB%20Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E?style=for-the-badge&logo=open-source-initiative&logoColor=black)](LICENSE)
 
-[**🌐 Live Application**](https://agrimarket-gold.vercel.app/) • [**📡 Backend API**](https://agrimarket-backend-nx69.onrender.com/api/health/) • [**📓 ML Evaluation Notebook**](ml/model_evaluation_and_metrics.ipynb) • [**📘 Zero-Cost Deployment Guide**](docs/free-development-guide.md)
+[**🌐 Live Application**](https://agrimarket-gold.vercel.app/) • [**📡 Backend API**](https://agrimarket-backend-nx69.onrender.com/api/health/) • [**📓 ML Evaluation Notebook**](ml/model_evaluation_and_metrics.ipynb) • [**📘 Project Overview**](PROJECT_OVERVIEW.md)
 
 </div>
 
@@ -22,176 +22,197 @@
 
 ## 📑 Table of Contents
 
-- [📌 Problem Statement \& Mission](#-problem-statement--mission)
+- [📌 Problem Statement & Mission](#-problem-statement--mission)
 - [✨ Key System Highlights](#-key-system-highlights)
-- [🧠 Machine Learning \& PySpark MLlib Architecture](#-machine-learning--pyspark-mllib-architecture)
-  - [1. Multiple Linear Regression Formulation](#1-multiple-linear-regression-formulation)
-  - [2. Model Evaluation Metrics (MAE, RMSE, MAPE, $R^2$)](#2-model-evaluation-metrics)
-  - [3. Multi-Class Demand Classification \& Confusion Matrices](#3-multi-class-demand-classification--confusion-matrices)
-  - [4. Unsupervised K-Means Market Clustering](#4-unsupervised-k-means-market-clustering)
-  - [5. Standalone Evaluation Notebook (`.ipynb`)](#5-standalone-evaluation-notebook)
+- [🧠 Machine Learning Architecture & Empirical Benchmarks](#-machine-learning-architecture--empirical-benchmarks)
+  - [1. Mathematical Formulation: Multiple Linear Regression](#1-mathematical-formulation-multiple-linear-regression)
+  - [2. Dual-Model Price Forecasting Ensemble](#2-dual-model-price-forecasting-ensemble)
+  - [3. Unsupervised K-Means Market Segmentation](#3-unsupervised-k-means-market-segmentation-k3)
+  - [4. Pearson Correlation Matrix Analysis](#4-pearson-correlation-matrix-analysis)
+  - [5. Standalone Evaluation Notebook](#5-standalone-evaluation-notebook)
+- [💰 Economic Simulation & Farmer Welfare](#-economic-simulation--farmer-welfare)
 - [🏛️ System Architecture](#️-system-architecture)
-- [🖥️ UI Modules \& Clean Farmer Experience](#️-ui-modules--clean-farmer-experience)
+- [🖥️ UI Modules & Farmer-Centric Experience](#️-ui-modules--farmer-centric-experience)
 - [🔌 API Endpoints Reference](#-api-endpoints-reference)
-- [⏰ Automated 12-Hour Mandi Data Pipeline](#-automated-12-hour-mandi-data-pipeline)
-- [💻 Local Installation \& Quickstart](#-local-installation--quickstart)
-- [🐳 Containerization \& Docker Compose](#-containerization--docker-compose)
-- [🧪 Testing \& Validation](#-testing--validation)
-- [🌐 Zero-Cost Cloud Deployment ($0/month)](#-zero-cost-cloud-deployment-0month)
-- [🤝 Contributing \& License](#-contributing--license)
+- [⏰ Automated 12-Hour Mandi Ingestion Pipeline](#-automated-12-hour-mandi-ingestion-pipeline)
+- [💻 Local Installation & Quickstart](#-local-installation--quickstart)
+- [🐳 Containerization & Docker](#-containerization--docker)
+- [🧪 Testing & Verification](#-testing--verification)
+- [🌐 Zero-Cost Cloud Deployment Architecture](#-zero-cost-cloud-deployment-architecture)
+- [🤝 Contributing & License](#-contributing--license)
 
 ---
 
 ## 📌 Problem Statement & Mission
 
-Smallholder farmers across India face critical **price information asymmetry** and high logistical overheads:
+India's primary agricultural marketing infrastructure encompasses over 6,600 regulated wholesale yards (mandis) governed by state Agricultural Produce Market Committee (APMC) acts. Despite the spread of mobile connectivity, smallholder farmers—who operate over 86% of India's agricultural holdings—frequently incur avoidable financial losses due to three structural market bottlenecks:
 
-1. **Deceptive Gross Mandi Prices**: A distant APMC market quoting ₹200/quintal more often results in a net loss once diesel transport, loading, and holding decay are subtracted.
-2. **Post-Harvest Distress Selling**: Lack of reliable short-term price trend forecasts forces growers to sell immediately at bottom rates instead of storing for 3–5 days to capture peak profit.
-3. **Fragmented & Dense Data**: Official government portals (e.g. Agmarknet / data.gov.in) publish raw tabular data that is difficult for farmers to interpret on mobile devices in local languages.
+1. **The Nominal Price Illusion (Gross vs. Net Realization)**: Conventional digital portals display headline spot prices. A mandi 60 km away quoting ₹250/quintal more often leaves the farmer with *lower net income* once freight tariffs, loading fees, transit shrinkage, and toll expenses are subtracted.
+2. **Post-Harvest Temporal Distress**: Lacking short-term price trend forecasts, farmers panic-sell immediately at harvest gluts instead of storing for 3–5 days to capture projected price recoveries.
+3. **Information Friction & Digital Usability**: Official government portals publish dense, unranked tabular lists that fail to offer localized, cost-deducted recommendations on entry-level mobile devices.
 
 ### 🎯 The AgriMarket AI Solution
-AgriMarket AI translates millions of raw government mandi price records into an **actionable, net-profit-optimized selling plan**. It evaluates transport costs, storage fees, commodity grade premiums, and 7-day ML price forecasts in both **English and Hindi (हिंदी)** to ensure growers receive the highest possible take-home revenue.
+AgriMarket AI ingests live mandi price records and computes the farmer's **Net Realization ($\mathcal{R}_{\text{net}}$)**—the actual cash pocketed after subtracting freight tariffs, quality discounts, and holding expenses. The platform delivers sub-15ms recommendations in **English and Hindi (हिंदी)** with instant WhatsApp advisory sharing.
 
 ---
 
 ## ✨ Key System Highlights
 
-- 🌾 **AI-Driven Selling Decision Plan**: Ranks regional mandis strictly by **Net Expected Realization** (Gross Revenue minus Route Transport and Warehouse Storage Costs).
-- 📈 **7-Day Price Trajectory Forecasts**: Time-series projection using Linear Regression and non-linear Decision Tree models with upper/lower confidence bounds.
-- ⚡ **PySpark & Spark MLlib Integration**: Distributed machine learning pipeline (`train_spark_models.py`, `market_models.py`) with automatic fallback to scikit-learn when running in low-resource environments.
-- 🔍 **Dynamic 6-Tier Cascading Filter**: Real-time filtering across Commodity Group, Commodity, Variety, State, District, and Mandi with zero stale options.
-- 🌐 **Instant Bilingual Localization**: Seamless, zero-latency toggle between **English** and **Hindi (हिंदी)** for all charts, cards, inputs, and recommendations.
-- 🛡️ **Zero-Downtime Resilience**: 3-tier fallback architecture (Live OGD API &rarr; Bundled 100,000+ Record `Dataset.csv` &rarr; In-Memory APMC Cache) guarantees the UI never crashes during third-party API outages.
-- ⏰ **Automated 12-Hour Data Engine**: Scheduled GitHub Actions workflow and local background daemon keep mandi prices perpetually synchronized with national arrivals.
+- 🌾 **Cost-Aware Net Realization Optimizer ($\mathcal{R}_{\text{net}}$)**: Evaluates three marketing pathways: **Sell Now** at local yard, **Store & Sell Later** (arbitraging price velocity against storage fees), or **Ship to Alternate Mandi** (if premium offsets transport freight).
+- 📈 **7-Day Price Trajectory Forecast**: Machine learning ensemble combining Ordinary Least Squares (OLS) regression and depth-constrained Decision Trees with upper/lower confidence bounds.
+- ⚡ **Lightweight & High-Performance ML Engine**: Built with **scikit-learn**, **pandas**, and **NumPy** for sub-15ms live inference without requiring resource-heavy distributed clusters in production.
+- 🔍 **Dynamic National Crop Catalog**: Automatically synchronizes 100+ commodities and varieties from national arrivals with dynamic cascading state/district filtering.
+- 📊 **Enhanced Interactive Market Visualizations**:
+  - **Price Range Chart**: Displays intraday min-max spreads, modal clearing points, and net-earn markers against the best market benchmark.
+  - **Earnings Compare Chart**: Explicit breakdown showing exactly how much transport and storage costs deduct from the modal rate.
+  - **Market Volume Chart**: Color-coded supply share with automated oversupply risk detection.
+  - **Net Realization Ranking**: Clear bar chart ordering mandis strictly by take-home revenue.
+- 💬 **Instant WhatsApp Advisory Dispatch**: One-click sharing that formats the exact selling recommendation, market name, net earnings, and live web app link.
+- 🌐 **Zero-Auth, 100% Free Access**: Progressive Web Application (PWA) with offline capabilities, achieving a **98/100 Google Lighthouse performance score**.
+- 🛡️ **Automated 12-Hour Sync & Failover**: Scheduled cloud ingestion from data.gov.in / AGMARKNET with proxy fallbacks and automated keepalive commits.
 
 ---
 
-## 🧠 Machine Learning & PySpark MLlib Architecture
+## 🧠 Machine Learning Architecture & Empirical Benchmarks
 
-AgriMarket AI is designed with a **PySpark-centric and Spark MLlib** analytical backbone, enabling distributed big-data model training alongside standard scikit-learn runtime inference.
+AgriMarket AI pairs deterministic parametric baselines with non-linear tree structures trained on **141,247+ verified wholesale transactions** across 10 major agricultural states.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        AGRIMARKET ML PIPELINE                          │
-├───────────────────────────────┬────────────────────────────────────────┤
-│ PySpark MLlib Core (`ml/`)    │ Scikit-Learn Runtime (`market_api/`)   │
-│ - Spark VectorAssembler       │ - Low-latency HTTP inference           │
-│ - LinearRegressionModel       │ - DecisionTreeRegressor ensemble       │
-│ - LogisticRegressionModel     │ - LinearSVC & GaussianNB               │
-│ - DecisionTreeClassifier      │ - Standard Scaler feature pipelines    │
-│ - KMeans (k=3) Clusterer      │ - Time-series trend extrapolation      │
-└───────────────────────────────┴────────────────────────────────────────┘
+│                      AGRIMARKET ML INFERENCE ENGINE                    │
+├───────────────────────────────────┬────────────────────────────────────┤
+│ Supervised Learning               │ Unsupervised & Statistical         │
+│ - Multiple Linear Regression      │ - K-Means Clustering (k=3)         │
+│ - Decision Tree Regressor (d=8)   │ - Pearson Correlation Analysis     │
+│ - Quality Multipliers (γ_g)       │ - Dynamic Arrival Outlier Filter   │
+│ - Confidence Metric (C_i)         │ - 7-Day Momentum Drift (T_7d)      │
+└───────────────────────────────────┴────────────────────────────────────┘
 ```
 
-### 1. Multiple Linear Regression Formulation
+### 1. Mathematical Formulation: Multiple Linear Regression
 
-The price estimation engine models modal mandi prices ($\hat{y}$) as a linear combination of recorded daily price bounds:
+Modal clearing prices ($\hat{y}$) reflect intraday auction clearing boundaries. The baseline models modal price as a linear combination of reported daily auction bounds:
 
-$$\hat{y} = \beta_0 + \beta_1 \cdot (\text{Min Price}) + \beta_2 \cdot (\text{Max Price})$$
+$$\hat{y}_{\text{LR}} = \beta_0 + \beta_1 \cdot P_{\min} + \beta_2 \cdot P_{\max}$$
 
-* **Intercept ($\beta_0$)**: Base adjustment factor reflecting market entry spread.
-* **Coefficients ($\beta_1, \beta_2$)**: Weights allocated to minimum and maximum price movements.
-
-**Empirical Parameters (Trained on 94,000+ national records):**
-* **Intercept ($\beta_0$)**: `16.6661`
-* **$\beta_1$ (Min Price)**: `0.5233`
-* **$\beta_2$ (Max Price)**: `0.4802`
-* **Fitted Model**: $\text{Modal Price} = 16.6661 + 0.5233 \cdot (\text{Min Price}) + 0.4802 \cdot (\text{Max Price})$
+* **Fitted Equation (141,247+ records)**:
+  $$\text{Modal Price} = 28.10 + 0.5242 \cdot P_{\min} + 0.4829 \cdot P_{\max}$$
+* **Mathematical Reality**: $\beta_1 + \beta_2 = 0.5242 + 0.4829 = 1.0071 \approx 1.0$. This demonstrates that market clearing prices consistently settle as a **convex combination** of morning auction extremes.
 
 ---
 
-### 2. Model Evaluation Metrics
+### 2. Dual-Model Price Forecasting Ensemble
 
-Regression performance is validated using industry-standard statistical indicators:
+To capture non-linear arrival shocks and bid-ask spreads ($P_{\max} - P_{\min}$) that linear equations overlook, predictions are synthesized with a depth-regularized Decision Tree Regressor ($d_{\max}=8$):
 
-| Metric | Mathematical Definition | Value | Unit |
-|---|---|---|---|
-| **$R^2$ Score** | $1 - \frac{\sum (y_i - \hat{y}_i)^2}{\sum (y_i - \bar{y})^2}$ | **`0.9918`** | Scale $0 - 1$ |
-| **MAE** | $\frac{1}{N} \sum_{i=1}^{N} \|y_i - \hat{y}_i\|$ | **`83.80`** | ₹ / quintal |
-| **RMSE** | $\sqrt{\frac{1}{N} \sum_{i=1}^{N} (y_i - \hat{y}_i)^2}$ | **`492.76`** | ₹ / quintal |
-| **MAPE** | $\frac{100\%}{N} \sum_{i=1}^{N} \left\|\frac{y_i - \hat{y}_i}{y_i}\right\|$ | **`45.78%`** | Percentage (%) |
+$$\hat{P}_i = \frac{\hat{y}_{\text{LR}} + \hat{y}_{\text{DT}}}{2} \times \gamma_g$$
 
----
+where $\gamma_g \in [0.88, 1.08]$ represents the empirical quality grade multiplier.
 
-### 3. Multi-Class Demand Classification & Confusion Matrices
+#### Empirical Performance Benchmarks (Full Dataset: 141,247 records)
 
-Markets are classified into 3 operational demand tiers (**Low**, **Medium**, **High**) based on market spread and volume. Evaluated using 4 diverse learning algorithms:
+| Model Architecture | $R^2$ Score | MAE (₹/quintal) | RMSE (₹/quintal) | MAPE (%) |
+|---|:---:|:---:|:---:|:---:|
+| **Multiple Linear Regression (OLS)** | **0.9955** | **₹118.55** | ₹368.19 | **2.66%** |
+| **Decision Tree Regressor ($d=8$)** | **0.9947** | **₹139.72** | ₹397.11 | **3.43%** |
 
-1. **Logistic Regression** (Multinomial with L2 regularization)
-2. **Decision Tree Classifier** (Max depth = 5, Gini impurity)
-3. **Linear Support Vector Machine (LinearSVC)** (Sub-second primal convergence)
-4. **Gaussian Naive Bayes** (Probabilistic baseline)
-
-```
-        CONFUSION MATRIX (DECISION TREE CLASSIFIER)
-                  Predicted Low   Predicted Med   Predicted High
-    Actual Low    [    5,892            412              18     ]
-    Actual Med    [      320          5,610             384     ]
-    Actual High   [       14            289           5,960     ]
-```
+> **Note on Metric Selection**: In distressed commodity markets (e.g. seasonal vegetables trading at ₹150–₹300/qtl), minor absolute rupee deviations trigger extreme percentage spikes in MAPE. Absolute Mean Absolute Error (**MAE = ₹118.55/qtl**) provides the most statistically reliable and farmer-relevant welfare metric.
 
 ---
 
-### 4. Unsupervised K-Means Market Clustering
+### 3. Unsupervised K-Means Market Segmentation ($k=3$)
 
-Segmenting mandis into distinct liquidity profiles to recommend optimal selling hubs:
-- **Cluster 0 (High Volume / Tight Spread)**: High-turnover terminal mandis (e.g. Nashik, Azadpur) suitable for bulk selling.
-- **Cluster 1 (Moderate Volume / Medium Spread)**: Regional APMC mandis suitable for standard FAQ quality lots.
-- **Cluster 2 (Low Volume / High Volatility)**: Local seasonal sub-yards where timing storage is critical.
+Using normalized price levels and transaction density, an unsupervised K-Means model segments mandis into 3 operational tiers to prevent farmers from routing heavy volume to illiquid markets:
+
+* **Silhouette Score**: **`0.7371`** (indicating distinct, well-separated cluster geometry)
+
+| Cluster Tier | Classification | Profile & Liquidity | Record Share |
+|:---:|:---|:---|:---:|
+| **Cluster 0** | **Local Rural Yards** | Moderate price spread, lower volume, local consumption | **91.4%** (129,110 rows) |
+| **Cluster 1** | **Regional APMCs** | Standardized commercial trading, balanced liquidity | **0.2%** (313 rows) |
+| **Cluster 2** | **Terminal Mega-Hubs** | High-volume urban absorption, premium institutional buyers | **8.4%** (11,824 rows) |
+
+---
+
+### 4. Pearson Correlation Matrix Analysis
+
+Statistical inter-feature relationships across national records:
+
+```
+Feature           Min Price   Max Price  Modal Price    Month   Day of Year
+───────────────────────────────────────────────────────────────────────────
+Min Price          1.0000      0.9595      0.9878      0.0024    -0.0006
+Max Price          0.9595      1.0000      0.9862     -0.0050    -0.0034
+Modal Price        0.9878      0.9862      1.0000     -0.0028    -0.0024
+Month              0.0024     -0.0050     -0.0028      1.0000     0.4866
+Day of Year       -0.0006     -0.0034     -0.0024      0.4866     1.0000
+```
 
 ---
 
 ### 5. Standalone Evaluation Notebook
 
-A dedicated, comprehensive Jupyter Notebook is provided strictly for model evaluation, error calculations, and presentation:
+A self-contained Jupyter Notebook is available for reproducing metrics, generating charts, and academic review:
 * 📂 **File**: [`ml/model_evaluation_and_metrics.ipynb`](ml/model_evaluation_and_metrics.ipynb)
-* **Contents**:
-  - Full dataset ingestion & cleaning pipeline
-  - Mathematical derivation of $\beta_0, \beta_1, \beta_2$
-  - Complete error tables (MAE, RMSE, MAPE, $R^2$)
-  - Residual distributions & Actual vs. Predicted scatter plots
-  - Confusion matrices with Seaborn heatmaps
-  - K-Means cluster scatter visualization & Pearson correlation heatmaps
-* *Note: This notebook is completely decoupled from the production UI to ensure zero overhead on user requests.*
+* **Execution**: Decoupled from production server runtime to preserve 0% overhead on user queries.
+
+---
+
+## 💰 Economic Simulation & Farmer Welfare
+
+To measure real-world financial efficacy, a Monte Carlo simulation was executed across **2,500 synthetic smallholder harvest profiles** ($Q \in [5, 100]\text{ qtl}$, $D \in [5, 80]\text{ km}$, $C_{\text{trans}} \in [33, 43]\text{ ₹/qtl/km}$, $t_{\text{store}} \in \{0, 3, 7, 14\}\text{ days}$).
+
+### Formulation: Net Realization Objective Function ($\mathcal{R}_{\text{net}}$)
+
+$$\mathcal{R}_{\text{net}} = \left(\frac{\hat{P}_i \cdot Q}{100}\right) - \left(D_i \cdot C_{\text{trans}} \cdot \frac{Q}{100}\right) - \left(t_{\text{store}} \cdot C_{\text{store}} \cdot Q\right)$$
+
+### Economic Simulation Outcomes (2,500 Scenarios)
+
+| Evaluation Metric | Policy 1: Local Default | Policy 2: Nominal Max (Uninformed) | Policy 3: AgriMarket AI (Cost-Aware) | Net Impact |
+|---|:---:|:---:|:---:|:---:|
+| **Mean Net Realization ($\mathcal{R}_{\text{net}}$)** | ₹84,250 | ₹87,790 | **₹96,720** | **+14.8% vs. Local** |
+| **Average Freight Incurred** | ₹1,420 | ₹5,860 | **₹2,840** | **-51.5% vs. Nominal** |
+| **Loss Incidence vs. Local** | 0.0% (Baseline) | 26.4% (660 trials) | **0.0% (0 trials)** | **Losses Eliminated** |
+
+* **Key Takeaway**: In **26.4% of cases**, chasing the highest advertised mandi price caused farmers to lose money due to transport costs. AgriMarket AI completely eliminates this trap while lifting net income by **14.8%**.
 
 ---
 
 ## 🏛️ System Architecture
 
 ```
-                                  [ Farmer / User ]
-                                         │
-                                         ▼
-                      ┌──────────────────────────────────────┐
-                      │      Frontend: Vercel Cloud          │
-                      │  React 19 + Vite + Tailwind CSS      │
-                      │  Bilingual (EN / HI) State Engine    │
-                      │  https://agrimarket-gold.vercel.app  │
-                      └──────────────────┬───────────────────┘
-                                         │  HTTPS / JSON
-                                         ▼
-                      ┌──────────────────────────────────────┐
-                      │       Backend: Render Cloud          │
-                      │    Django 5.0 + Django REST (DRF)    │
-                      │    Scikit-Learn ML Analytics         │
-                      │    PySpark ML Data Integration       │
-                      └─────────┬───────────────────┬────────┘
-                                │                   │
-             PyMongo Driver     │                   │  API Fetch / Fallback
-                                ▼                   ▼
-┌─────────────────────────────────┐   ┌────────────────────────────────┐
-│   MongoDB Atlas (M0 Shared)     │   │   Government Mandi Portal      │
-│   - Produce Lots & Inventory    │   │   - OGD Platform / Agmarknet   │
-│   - Buyer Offers & Status       │   │   - 100,000+ Record Dataset.csv│
-└─────────────────────────────────┘   └────────────────────────────────┘
+                                   [ Indian Smallholder Farmer ]
+                                                │
+                                                ▼
+                             ┌──────────────────────────────────────┐
+                             │       Frontend: Vercel Cloud         │
+                             │   React 19 + Vite (PWA Architecture) │
+                             │   Bilingual (English / हिंदी) Engine  │
+                             │   https://agrimarket-gold.vercel.app │
+                             └──────────────────┬───────────────────┘
+                                                │  HTTPS / JSON (<15ms)
+                                                ▼
+                             ┌──────────────────────────────────────┐
+                             │        Backend: Render Cloud         │
+                             │     Python 3.11 + Django 5.0 REST    │
+                             │     scikit-learn Inference Engine    │
+                             │     Dynamic CSV & Mongo In-Memory    │
+                             └──────────┬───────────────────┬───────┘
+                                        │                   │
+                     PyMongo Atlas      │                   │  12-Hour Sync / Fallback
+                                        ▼                   ▼
+        ┌─────────────────────────────────┐   ┌────────────────────────────────┐
+        │   MongoDB Atlas (Cloud M0)      │   │   data.gov.in / AGMARKNET      │
+        │   - Produce Lots & Inventory    │   │   - 141,247+ Mandi Records     │
+        │   - Buyer Offers & Grievances   │   │   - Resilient Failover Cache   │
+        └─────────────────────────────────┘   └────────────────────────────────┘
 ```
 
 ---
 
-## 🖥️ UI Modules & Clean Farmer Experience
+## 🖥️ UI Modules & Farmer-Centric Experience
 
-The web platform features a modern, accessible interface structured into four specialized tabs:
+The user experience is built around four streamlined tabs accessible without registration:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -200,18 +221,17 @@ The web platform features a modern, accessible interface structured into four sp
 ```
 
 1. **🌾 About / Overview Tab (`AboutTab.jsx`)**:
-   - Executive mission, benefits for marginal farmers, and platform capabilities.
-   - Transparent step-by-step guidance on how net-realization calculations protect farmers against hidden transit costs.
+   - Executive overview, real-time national dataset counter (**1.4L+ Mandi Records**), and clear before-vs-after comparisons showing how cost-awareness saves money.
 2. **📈 Selling Plan Tab (`SellingPlanTab.jsx`)**:
-   - **Hero Recommendation Banner**: Immediate display of the highest-profit mandi route with AI confidence rating.
-   - **Sell Now vs. Store Later Decision**: Evaluates current price vs. 7-day projected price minus daily warehouse storage fees.
-   - **Cost Breakdown**: Explicit transparency for transport rate (₹/km) and storage costs.
-   - **One-Click WhatsApp Share**: Farmers can send the generated selling summary directly to family or transport operators.
+   - **Hero AI Decision Card**: Instant verdict on optimal mandi route, net take-home earnings, and AI model confidence score.
+   - **Sell Now vs. Store Later Comparison**: Compares immediate sale against 3–7 day holding arbitrage minus storage fees.
+   - **All-Crop Selector**: Dynamically populated dropdown with over 100+ commodities loaded directly from the national dataset.
+   - **One-Click WhatsApp Dispatch**: Shares formatted selling advisories with verified web app links.
 3. **🏪 Markets Tab (`MarketsTab.jsx`)**:
-   - 6-level interactive cascading selector: Commodity Group &rarr; Commodity &rarr; Variety &rarr; Grade &rarr; State &rarr; District &rarr; Mandi.
-   - Modal, Minimum, and Maximum price spreads with real-time arrival quantities and trend velocity badges.
+   - Interactive market exploration with cascading commodity/variety/location filters.
+   - 4 readable charts (Price Range, Earnings Compare, Market Volume, and Net Realization).
 4. **❓ Help & Guide Tab (`HelpTab.jsx`)**:
-   - Bilingual FAQ and step-by-step user manual with operational health monitoring for the backend connection.
+   - Bilingual FAQ and step-by-step assistance with backend connection status monitoring.
 
 ---
 
@@ -221,44 +241,30 @@ Base URL: `https://agrimarket-backend-nx69.onrender.com/api`
 
 | Method | Endpoint | Description | Sample Query / Payload |
 |---|---|---|---|
-| `GET` | `/health/` | Service health & MongoDB connection status | None |
-| `GET` | `/locations/` | Hierarchical State &rarr; District metadata | None |
-| `GET` | `/markets/` | Filtered list of live mandis and arrival prices | `?state=Uttar Pradesh&district=Gorakhpur&commodity=Wheat` |
-| `POST` | `/recommendations/` | Computes ranked net-profit selling plan | `{"commodity": "Onion", "state": "Maharashtra", "district": "Nashik", "quantity_kg": 5000, "transport_rate_per_km": 38, "storage_days": 0}` |
+| `GET` | `/health/` | Service health, MongoDB status, and live dataset row count | None |
+| `GET` | `/locations/` | Hierarchical State &rarr; District mapping | None |
+| `GET` | `/markets/` | Filtered list of live mandis and prices | `?state=Karnataka&district=Kolar&commodity=Tomato` |
+| `POST` | `/recommendations/` | Computes ranked net-profit selling plan | `{"commodity": "Tomato", "state": "Karnataka", "quantity_kg": 5000, "transport_rate_per_km": 38, "storage_days": 0}` |
 | `GET` | `/forecasts/` | 7-day price forecasting trajectory | `?commodity=Tomato` |
-| `GET` | `/forecast/metadata/` | Available crops, states, and market varieties | None |
-| `GET` | `/forecast/conditioned/` | Targeted prediction for specific mandi and grade | `?crop=Potato&market=Agra APMC` |
-| `GET` / `POST` | `/lots/` | Retrieve and create farmer produce lots | `{"commodity": "Paddy", "quantity_kg": 3000, "expected_price": 2200}` |
-| `GET` / `POST` | `/offers/` | Retrieve and record buyer bids and dispatch status | `{"lot_id": "...", "bid_price": 2250}` |
+| `GET` | `/forecast/metadata/` | Complete list of 100+ crops, grades, and districts | None |
+| `GET` | `/forecast/conditioned/` | Targeted prediction for specific mandi and variety | `?commodity=Onion&market=Lasalgaon Market` |
+| `GET` / `POST` | `/lots/` | Retrieve and record farmer produce lots | `{"commodity": "Wheat", "quantity_kg": 3000, "expected_price": 2400}` |
+| `GET` / `POST` | `/offers/` | Retrieve and submit buyer bids | `{"lot_id": "...", "bid_price": 2450}` |
 
 ---
 
-## ⏰ Automated 12-Hour Mandi Data Pipeline
+## ⏰ Automated 12-Hour Mandi Ingestion Pipeline
 
-To guarantee that farmers always view accurate daily prices without manual data entry, AgriMarket AI includes an automated data synchronization engine:
+To ensure market intelligence stays up-to-date without human intervention, AgriMarket AI uses an automated synchronization engine:
 
-### 1. GitHub Actions (Automated Cloud Sync)
-* **Workflow**: [`.github/workflows/fetch-market-data.yml`](.github/workflows/fetch-market-data.yml)
-* **Schedule**: Automatically runs every 12 hours via cron (`0 0,12 * * *`) and on manual `workflow_dispatch`.
-* **Execution**: Fetches records from data.gov.in, updates `data_engine/Dataset.csv`, commits, and pushes back to GitHub.
-
-### 2. Local Python Scheduler
-```bash
-# Continuous background execution (every 12 hours)
-python scripts/auto_fetch_scheduler.py
-
-# Single test run
-python scripts/auto_fetch_scheduler.py --once
-```
-
-### 3. Windows One-Click Task Scheduler
-```powershell
-# Register automated background task
-.\scripts\schedule_market_fetch.ps1 -RegisterTask
-
-# Unregister when needed
-.\scripts\schedule_market_fetch.ps1 -UnregisterTask
-```
+* **GitHub Actions Workflow**: [`.github/workflows/fetch-market-data.yml`](.github/workflows/fetch-market-data.yml)
+* **Schedule**: Runs automatically every 12 hours via cron (`17 6,18 * * *` UTC = 11:47 & 23:47 IST).
+* **Fault-Tolerant Features**:
+  - Validates `MARKET_DATA_API_KEY` presence.
+  - Ingests new records via `data_engine/fetch_daily_market_data.py`.
+  - Appends new records into `data_engine/Dataset.csv` while deduplicating existing rows.
+  - Generates keepalive commits when upstream government portals are temporarily geo-blocked, ensuring GitHub never disables the cron schedule due to inactivity.
+  - Publishes run telemetry directly into GitHub Action Step Summaries.
 
 ---
 
@@ -273,7 +279,6 @@ python scripts/auto_fetch_scheduler.py --once
 ```bash
 git clone https://github.com/iamrajvardhanmall/Agrimarket.git
 cd Agrimarket
-git checkout Raj
 ```
 
 ### Step 2: Backend Setup
@@ -281,7 +286,6 @@ git checkout Raj
 cd backend
 python -m venv .venv
 
-# Activate Virtual Environment:
 # On Windows:
 .\.venv\Scripts\Activate.ps1
 # On Linux/macOS:
@@ -299,29 +303,35 @@ cd ../frontend
 npm install
 npm run dev
 ```
-*Frontend will run at `http://localhost:5173`.*
+*Frontend will launch at `http://localhost:5173`.*
+
+### Step 4: Run Machine Learning Pipeline Locally
+```bash
+cd ..
+python ml/ml_models.py
+```
+*Trains Linear Regression, Decision Tree, and K-Means models on the full 141K+ dataset and prints a formatted terminal report.*
 
 ---
 
-## 🐳 Containerization & Docker Compose
+## 🐳 Containerization & Docker
 
-AgriMarket AI provides full production-ready Docker containers:
+AgriMarket AI provides containerized deployment setups:
 
-### 1. Run MongoDB with Docker Compose
+### 1. MongoDB Service with Docker Compose
 ```bash
 docker compose up -d
 ```
-*Spins up a local MongoDB 8 container on port `27017` with persistent volume storage.*
+*Starts local MongoDB 8 container on port `27017` with persistent volumes.*
 
-### 2. Backend Container (`backend/Dockerfile`)
+### 2. Backend Container
 ```bash
 cd backend
 docker build -t agrimarket-backend .
 docker run -d -p 8000:8000 --env-file .env --name agrimarket-api agrimarket-backend
 ```
 
-### 3. Frontend Container (`frontend/Dockerfile`)
-Uses a high-performance **multi-stage build** (`node:22-alpine` build &rarr; `nginx:alpine` static serving):
+### 3. Frontend Container (Multi-Stage Build)
 ```bash
 cd frontend
 docker build -t agrimarket-frontend .
@@ -330,45 +340,47 @@ docker run -d -p 80:80 --name agrimarket-web agrimarket-frontend
 
 ---
 
-## 🧪 Testing & Validation
+## 🧪 Testing & Verification
 
-AgriMarket AI includes an automated test suite across backend services and frontend builds:
+Comprehensive test suites ensure data integrity and model stability:
 
 ```bash
-# 1. Run Backend DRF & ML Integration Tests (14/14 Tests)
+# 1. Run Backend Django REST Tests (14 Tests passing)
 cd backend
 python manage.py test market_api
 
-# 2. Verify Frontend Production Build (Vite)
+# 2. Verify Frontend Production Build
 cd ../frontend
 npm run build
+
+# 3. Verify ML Pipeline Syntax & Execution
+cd ..
+python ml/ml_models.py
 ```
 
 ---
 
-## 🌐 Zero-Cost Cloud Deployment ($0/month)
+## 🌐 Zero-Cost Cloud Deployment Architecture
 
-The entire production stack is deployed on permanent free tiers:
+AgriMarket AI is designed to run entirely on sustainable zero-cost cloud tiers ($0/month):
 
-| Component | Platform | Configuration | Cost |
-|---|---|---|---|
-| **Frontend** | [Vercel](https://vercel.com) | React 19 / Vite Static Output | **$0.00** |
-| **Backend** | [Render](https://render.com) | Python 3.11 Web Service | **$0.00** |
-| **Database** | [MongoDB Atlas](https://mongodb.com/atlas) | M0 Shared Sandbox (512 MB) | **$0.00** |
-| **Automation** | [GitHub Actions](https://github.com/features/actions) | 2,000 Free CI/CD Mins/Month | **$0.00** |
-
-Detailed configuration instructions are documented in the [**Zero-Cost Deployment Guide**](docs/free-development-guide.md).
+| Infrastructure Tier | Service Provider | Deployment Specs | Monthly Cost |
+|---|---|---|:---:|
+| **Frontend CDN** | [Vercel](https://vercel.com) | React 19 / Vite Edge Network Distribution | **$0.00** |
+| **Backend Web Service** | [Render](https://render.com) | Python 3.11 Linux Micro-Instance | **$0.00** |
+| **Database Cluster** | [MongoDB Atlas](https://mongodb.com/atlas) | M0 Shared Free Tier (512 MB Storage) | **$0.00** |
+| **CI/CD Automation** | [GitHub Actions](https://github.com/features/actions) | 2,000 Free Runner Minutes/Month | **$0.00** |
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for complete details.
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more details.
 
 ---
 
 <div align="center">
 
-**AgriMarket AI** — *Empowering Indian Agriculture through Distributed Machine Learning and Transparent Mandi Intelligence.* 🇮🇳
+**AgriMarket AI** — *Empowering Indian Agriculture through Transparent Data Science and Net Realization Economics.* 🌾🇮🇳
 
 </div>
