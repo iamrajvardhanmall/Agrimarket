@@ -1,7 +1,24 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+
+const API = import.meta.env.VITE_API_URL ?? "";
 
 export function AboutTab({ t, onGoToPlan, onGoToMarkets }) {
   const isHi = t.appName === "एग्रीमार्केट";
+  const [datasetRows, setDatasetRows] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/health/`)
+      .then((r) => r.json())
+      .then((d) => { if (d.dataset_rows) setDatasetRows(d.dataset_rows); })
+      .catch(() => {});
+  }, []);
+
+  // Format: 141,247 → "1.4L+" for concise display
+  const fmtRows = (n) => {
+    if (!n) return "1,40,000+";
+    if (n >= 100000) return `${(n / 100000).toFixed(1)}L+`;
+    return `${n.toLocaleString("en-IN")}+`;
+  };
 
   return (
     <div className="about-page">
@@ -56,7 +73,7 @@ export function AboutTab({ t, onGoToPlan, onGoToMarkets }) {
       {/* ══ STAT CARDS ══ */}
       <section className="ab-stats-section">
         {[
-          { val: "10,000+", label: isHi ? "मंडी रिकॉर्ड" : "Mandi Records", icon: "📋" },
+          { val: fmtRows(datasetRows), label: isHi ? "मंडी रिकॉर्ड" : "Mandi Records", icon: "📋" },
           { val: "7", label: isHi ? "दिन का पूर्वानुमान" : "Day Forecast", icon: "🔮" },
           { val: "₹0", label: isHi ? "कोई शुल्क नहीं" : "Zero Cost", icon: "🎁" },
           { val: "2", label: isHi ? "भाषाएं" : "Languages", icon: "🗣️" },

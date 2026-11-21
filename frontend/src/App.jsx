@@ -1,4 +1,4 @@
-import { useState, useCallback, useTransition, useMemo } from "react";
+import { useState, useCallback, useTransition, useMemo, useEffect } from "react";
 import { IconHome, IconSeed, IconChart, IconHelp, IconMenu } from "./components/common/Icons";
 import { Toast } from "./components/common/Toast";
 import { AboutTab } from "./components/tabs/AboutTab";
@@ -37,6 +37,15 @@ export default function App() {
   const locationMap = useMemo(() => locationsRes.data?.locations || {}, [locationsRes.data]);
   const availableStates = useMemo(() => (Object.keys(locationMap).length ? Object.keys(locationMap).sort() : states), [locationMap]);
   const availableDistricts = useMemo(() => locationMap[state] || [], [locationMap, state]);
+
+  /* ── Fetch all commodities from dataset via backend ── */
+  const [availableCommodities, setAvailableCommodities] = useState([]);
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/forecast/metadata/`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.commodities?.length) setAvailableCommodities(d.commodities); })
+      .catch(() => {});
+  }, []);
 
   /* ── State for markets & recommendations ── */
   const [markets, setMarkets] = useState(demoMarkets);
@@ -199,6 +208,7 @@ export default function App() {
     isRecommendationPending,
     availableStates,
     availableDistricts,
+    availableCommodities,
     dataError,
     lang,
   };

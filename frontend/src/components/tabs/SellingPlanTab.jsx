@@ -3,7 +3,7 @@ import { IconSeed, IconPin, IconArrow, IconWhatsApp, IconStar, IconWarn, IconLea
 import { ConfBar } from "../common/ConfBar";
 import { fmt, today } from "../../utils/formatters";
 import { shareWhatsApp } from "../../utils/share";
-import { commodities, varieties, demoMarkets } from "../../constants/marketData";
+import { commodities as fallbackCommodities, varieties, demoMarkets } from "../../constants/marketData";
 
 export function SellingPlanTab({
   t, markets, recommendation, decisionOptions, ranking, forecast, forecastLoading,
@@ -14,8 +14,10 @@ export function SellingPlanTab({
   storageDays, setStorageDays, storageRate, setStorageRate,
   deliveryPref, setDeliveryPref,
   runRecommendation, loading, isRecommendationPending,
-  availableStates, availableDistricts, dataError, lang,
+  availableStates, availableDistricts, availableCommodities, dataError, lang,
 }) {
+  // Use live dataset commodities if loaded, else fall back to hardcoded list
+  const cropList = availableCommodities?.length ? availableCommodities : fallbackCommodities;
   const best = markets[0] || demoMarkets[0];
   const recommended = decisionOptions.find((o) => o.type === recommendation?.type) || decisionOptions[0];
   const net = recommended?.net_realization ?? best?.net_realization ?? 0;
@@ -77,7 +79,7 @@ export function SellingPlanTab({
             <span>{t.commodity}</span>
             <select value={commodity} onChange={(e) => { setCommodity(e.target.value); setCommodityGroup(""); }}>
               <option value="">{t.allCrops}</option>
-              {commodities.map((c) => <option key={c}>{c}</option>)}
+              {cropList.map((c) => <option key={c}>{c}</option>)}
             </select>
           </label>
           <label className="field">

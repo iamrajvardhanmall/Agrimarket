@@ -22,7 +22,23 @@ def health(request):
         check_connection()
     except PyMongoError:
         return Response({"status": "error", "service": "agrimarket-api", "database": "unavailable"}, status=503)
-    return Response({"status": "ok", "service": "agrimarket-api", "database": "mongodb"})
+
+    # Count actual Dataset.csv rows and return as part of health response
+    dataset_rows = 0
+    try:
+        dataset_path = Path(__file__).resolve().parents[2] / "data_engine" / "Dataset.csv"
+        if dataset_path.exists():
+            with dataset_path.open(encoding="utf-8-sig") as f:
+                dataset_rows = sum(1 for _ in f) - 1  # subtract header row
+    except Exception:
+        pass
+
+    return Response({
+        "status": "ok",
+        "service": "agrimarket-api",
+        "database": "mongodb",
+        "dataset_rows": dataset_rows,
+    })
 
 
 @api_view(["GET"])
@@ -230,7 +246,7 @@ def ml_insights(request):
         str(Path(__file__).resolve().parents[2] / "data_engine" / "Dataset.csv"),
     )
     try:
-        from ml.market_models import train_dataset
+        from ml.ml_models import train_dataset
         return Response(train_dataset(dataset))
     except (OSError, ValueError, ImportError) as exc:
         return Response({"error": f"ML training unavailable: {exc}"}, status=503)

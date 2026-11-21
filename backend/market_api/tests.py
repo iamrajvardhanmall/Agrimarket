@@ -187,7 +187,7 @@ class MvpServiceTests(SimpleTestCase):
         self.assertEqual(result["total_sales_amount"], 215000)
 
     def test_ml_training_exposes_syllabus_algorithms_and_metrics(self):
-        from ml.market_models import train_models
+        from ml.ml_models import train_models
 
         records = [{
             "state": "Maharashtra",
