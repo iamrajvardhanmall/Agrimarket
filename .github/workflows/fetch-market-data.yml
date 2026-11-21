@@ -96,11 +96,13 @@ jobs:
             echo "Note: data.gov.in blocks Azure/GitHub runner IPs. Use update_today_mandi_data.bat locally for live data." >> .github/keepalive/last_run.txt
 
             git add .github/keepalive/last_run.txt
-            git commit -m "chore(keepalive): scheduled run $(date -u '+%Y-%m-%d %H:%M UTC') [skip ci]"
+            DATE_STR=$(date -u '+%d %b %Y, %I:%M %p UTC')
+            git commit -m "Mandi Data Sync: Scheduled 12-hour check (${DATE_STR})"
             echo "Keepalive commit written — cron schedule stays active."
           else
-            ROWS=$(wc -l < data_engine/Dataset.csv)
-            git commit -m "data: auto-update mandi dataset $(date -u '+%Y-%m-%d') — ${ROWS} total rows [skip ci]"
+            ROWS=$(wc -l < data_engine/Dataset.csv | tr -d ' ')
+            DATE_STR=$(date -u '+%d %b %Y')
+            git commit -m "Update Mandi Dataset: ${ROWS} total records (${DATE_STR})"
             echo "Dataset updated and committed with ${ROWS} total rows."
           fi
 
