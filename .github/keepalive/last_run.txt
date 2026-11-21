@@ -1,4 +1,4 @@
-Last scheduled run : 2026-11-21 12:06:37 UTC
-Fetch result       : true
+Last scheduled run : 2026-11-21 12:14:18 UTC
+Fetch status       : Geo-blocked by NIC WAF (retaining existing dataset)
 API key configured : true
 Note: data.gov.in blocks Azure/GitHub runner IPs. Use update_today_mandi_data.bat locally for live data.
