@@ -14,7 +14,7 @@
 [![MongoDB Atlas](https://img.shields.io/badge/Database-MongoDB%20Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E?style=for-the-badge&logo=open-source-initiative&logoColor=black)](LICENSE)
 
-[**🌐 Live Application**](https://agrimarket-gold.vercel.app/) • [**📡 Backend API**](https://agrimarket-backend-nx69.onrender.com/api/health/) • [**📓 ML Evaluation Notebook**](ml/model_evaluation_and_metrics.ipynb) • [**📘 Project Overview**](PROJECT_OVERVIEW.md)
+[**🌐 Live Application**](https://agrimarket-gold.vercel.app/) • [**📘 Project Overview**](PROJECT_OVERVIEW.md)
 
 </div>
 
@@ -29,7 +29,6 @@
   - [2. Dual-Model Price Forecasting Ensemble](#2-dual-model-price-forecasting-ensemble)
   - [3. Unsupervised K-Means Market Segmentation](#3-unsupervised-k-means-market-segmentation-k3)
   - [4. Pearson Correlation Matrix Analysis](#4-pearson-correlation-matrix-analysis)
-  - [5. Standalone Evaluation Notebook](#5-standalone-evaluation-notebook)
 - [💰 Economic Simulation & Farmer Welfare](#-economic-simulation--farmer-welfare)
 - [🏛️ System Architecture](#️-system-architecture)
 - [🖥️ UI Modules & Farmer-Centric Experience](#️-ui-modules--farmer-centric-experience)
@@ -147,14 +146,6 @@ Modal Price        0.9878      0.9862      1.0000     -0.0028    -0.0024
 Month              0.0024     -0.0050     -0.0028      1.0000     0.4866
 Day of Year       -0.0006     -0.0034     -0.0024      0.4866     1.0000
 ```
-
----
-
-### 5. Standalone Evaluation Notebook
-
-A self-contained Jupyter Notebook is available for reproducing metrics, generating charts, and academic review:
-* 📂 **File**: [`ml/model_evaluation_and_metrics.ipynb`](ml/model_evaluation_and_metrics.ipynb)
-* **Execution**: Decoupled from production server runtime to preserve 0% overhead on user queries.
 
 ---
 
