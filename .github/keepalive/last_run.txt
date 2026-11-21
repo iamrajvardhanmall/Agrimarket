@@ -1,3 +1,4 @@
-Last scheduled run: 2026-11-21 00:02:12 UTC
-Fetch result: true
+Last scheduled run : 2026-11-21 11:59:43 UTC
+Fetch result       : true
+API key configured : true
 Note: data.gov.in blocks Azure/GitHub runner IPs. Use update_today_mandi_data.bat locally for live data.
